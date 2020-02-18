@@ -102,7 +102,12 @@ FORMAT = (
 CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE = ["further_reading"]
 # NOTE: For very strange reasons, DATE_MARKER ends up being unicode in py2, not a string...
 DATE_MARKER = str(">>>THIS_IS_A_DATE<<<")
-FUNCTION_PATH = str(os.path.normpath(os.path.dirname(__file__) + "/../"))
+
+
+from esm_tools import FUNCTION_PATH
+
+
+#FUNCTION_PATH = str(os.path.normpath(os.path.dirname(__file__) + "/../"))
 esm_master_dir = str(os.path.normpath(os.path.dirname(__file__) + "/../../"))
 
 gray_list = [
