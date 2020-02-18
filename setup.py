@@ -10,7 +10,7 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
-requirements = ["pyyaml", "coloredlogs", "six", 'esm_calendar @ git+https://gitlab.awi.de/esm_tools/esm_calendar.git' ]
+requirements = ["pyyaml>=5.1", "coloredlogs", "six", 'esm_calendar @ git+https://gitlab.awi.de/esm_tools/esm_calendar.git' ]
 
 setup_requirements = [ ]
 

@@ -1,4 +1,10 @@
 import yaml
+import logging
+
+logger = logging.getLogger("root")
+DEBUG_MODE = logger.level == logging.DEBUG
+
+YAML_AUTO_EXTENSIONS = ["", ".yml", ".yaml", ".YML", ".YAML"]
 
 
 def yaml_file_to_dict(filepath):

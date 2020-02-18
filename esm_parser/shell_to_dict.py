@@ -14,11 +14,10 @@ import sys
 import subprocess
 
 # Third party imports
-import externals
 import six
 
 # Imports from this module
-import esm_parser
+from .yaml_to_dict import *
 
 
 FUNCTION_PATH = os.path.dirname(__file__) + "/../"
@@ -39,7 +38,7 @@ def mini_recursive_run_func(config, func):
 def remap_old_new_keys(config):
     try:
         mapping_table_old_to_new = "not a thing yet"
-        mapping_table = esm_parser.yaml_file_to_dict(mapping_table_old_to_new)
+        mapping_table = yaml_file_to_dict(mapping_table_old_to_new)
         for script_key, python_key in six.iteritems(mapping_table):
             for config_key, config_value in six.iteritems(config):
                 if config_key == script_key:

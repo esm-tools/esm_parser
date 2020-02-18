@@ -80,8 +80,8 @@ import yaml
 import six
 
 # functions reading in dict from file
-from shell_to_dict import *
-from yaml_to_dict import *
+from .shell_to_dict import *
+from .yaml_to_dict import *
 
 # Date class
 from esm_calendar import Date
@@ -104,8 +104,6 @@ CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE = ["further_reading"]
 DATE_MARKER = str(">>>THIS_IS_A_DATE<<<")
 FUNCTION_PATH = str(os.path.normpath(os.path.dirname(__file__) + "/../"))
 esm_master_dir = str(os.path.normpath(os.path.dirname(__file__) + "/../../"))
-
-YAML_AUTO_EXTENSIONS = ["", ".yml", ".yaml", ".YML", ".YAML"]
 
 gray_list = [
     r"choose_lresume",
