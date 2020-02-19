@@ -104,11 +104,14 @@ CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE = ["further_reading"]
 DATE_MARKER = str(">>>THIS_IS_A_DATE<<<")
 
 
-from esm_tools import FUNCTION_PATH
+import esm_tools
 
 
-#FUNCTION_PATH = str(os.path.normpath(os.path.dirname(__file__) + "/../"))
-esm_master_dir = str(os.path.normpath(os.path.dirname(__file__) + "/../../"))
+FUNCTION_PATH = esm_tools.FUNCTION_PATH
+
+esm_function_dir = esm_tools.FUNCTION_PATH
+esm_namelist_dir = esm_tools.get_rc_entry("NAMELIST_PATH")
+esm_runscript_dir = esm_tools.get_rc_entry("RUNSCRIPT_PATH")
 
 gray_list = [
     r"choose_lresume",
@@ -1907,7 +1910,10 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
         del self.config
 
         setup_config["general"].update(
-            {"esm_master_dir": esm_master_dir, "expid": "test"}
+            {"esm_function_dir": esm_function_dir,
+             "esm_namelist_dir": esm_namelist_dir,
+             "esm_runscript_dir": esm_runscript_dir,
+             "expid": "test"}
         )
 
         # setup_config should be ok now

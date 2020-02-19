@@ -20,7 +20,7 @@ import six
 from .yaml_to_dict import *
 
 
-FUNCTION_PATH = os.path.dirname(__file__) + "/../"
+from esm_tools import FUNCTION_PATH
 
 
 def mini_recursive_run_func(config, func):
