@@ -104,14 +104,14 @@ CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE = ["further_reading"]
 DATE_MARKER = str(">>>THIS_IS_A_DATE<<<")
 
 
-import esm_tools
+import esm_rcfile
 
 
-FUNCTION_PATH = esm_tools.FUNCTION_PATH
+FUNCTION_PATH = esm_rcfile.FUNCTION_PATH
 
-esm_function_dir = esm_tools.FUNCTION_PATH
-esm_namelist_dir = esm_tools.get_rc_entry("NAMELIST_PATH")
-esm_runscript_dir = esm_tools.get_rc_entry("RUNSCRIPT_PATH")
+esm_function_dir = esm_rcfile.FUNCTION_PATH
+esm_namelist_dir = esm_rcfile.get_rc_entry("NAMELIST_PATH")
+esm_runscript_dir = esm_rcfile.get_rc_entry("RUNSCRIPT_PATH")
 
 gray_list = [
     r"choose_lresume",
