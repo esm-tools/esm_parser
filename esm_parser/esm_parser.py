@@ -299,8 +299,10 @@ def attach_to_config_and_reduce_keyword(
                 ] = config_to_read_from[full_keyword]
         else:
             if reduced_keyword in config_to_read_from:
-                config_to_read_from[reduced_keyword] += config_to_read_from[full_keyword] 
-            else:    
+                config_to_read_from[reduced_keyword] += config_to_read_from[
+                    full_keyword
+                ]
+            else:
                 config_to_read_from[reduced_keyword] = config_to_read_from[full_keyword]
         # FIXME: Does this only need to work for lists?
         if isinstance(config_to_read_from[full_keyword], list):
@@ -691,7 +693,9 @@ def basic_add_entries_to_chapter_in_config(config):
 def basic_remove_entries_from_chapter_in_config(config):
     all_removes_for_model = basic_find_remove_entries_in_config(config)
     for remove_chapter, remove_entries in all_removes_for_model:
-        remove_entries_from_chapter(config, remove_chapter.replace("remove_", ""), remove_entries)
+        remove_entries_from_chapter(
+            config, remove_chapter.replace("remove_", ""), remove_entries
+        )
 
 
 def add_entries_to_chapter_in_config(
@@ -872,7 +876,9 @@ def list_all_keys_starting_with_choose(mapping, model_name, ignore_list, isblack
     if not isinstance(mapping, dict):
         print(">>>>>>>>>>>>>>>>>>>> PG")
         print(locals())
-        import pdb; pdb.set_trace()
+        import pdb
+
+        pdb.set_trace()
     keys = list(mapping)
     for key in keys:
         value = mapping[key]
@@ -1021,8 +1027,10 @@ def resolve_basic_choose(config, config_to_replace_in, choose_key, blackdict={})
             return
     if isinstance(choice, str) and "${" in choice:
         try:
-            choice = find_variable([config_to_replace_in["model"]], choice, config, [], True)
-            #print("BEEEEE CALM, resolved: " + choice)
+            choice = find_variable(
+                [config_to_replace_in["model"]], choice, config, [], True
+            )
+            # print("BEEEEE CALM, resolved: " + choice)
         except:
             #print("BEEEEE CAREFUL, did not resolve: " + choose_key)
             logging.warning("Variable %s as a choice, skipping...", choice)
@@ -1358,7 +1366,7 @@ def find_variable(tree, rhs, full_config, white_or_black_list, isblacklist):
                     )
 
                 if "$((" in var_result:
-                    var_result= do_math_in_entry(tree, var_result, full_config)
+                    var_result = do_math_in_entry(tree, var_result, full_config)
 
             if var_attrs:
                 rentry = []
@@ -1445,7 +1453,16 @@ def list_to_multikey(tree, rhs, config_to_search, ignore_list, isblacklist):
     config_to_search : dict
 
 
-
+    Notes
+    -----
+    Internal variable definitions in this function; based upon the example:
+    prefix_[[streams-->STREAM]]_postfix
+    
+    + ``ok_part``: ``prefix_``
+    + ``actual_list``: ``streams-->STREAM``
+    + ``key_in_list``: ``streams``
+    + ``value_in_list``: ``STREAM``
+    + ``entries_of_key``: list of actual chapter ``streams``, e.g. ``[accw, echam6, e6hrsp, ...]``
     """
     list_fence = "[["
     list_end = "]]"
@@ -1495,6 +1512,60 @@ def list_to_multikey(tree, rhs, config_to_search, ignore_list, isblacklist):
                             )
                         ] = replaced_list
 
+                def helper_dict_replacer(entry, value_in_list, replacement_key):
+                    if isinstance(entry, str):
+                        return entry.replace(value_in_list, replacement_key)
+                    if isinstance(entry, list):
+                        new_list = []
+                        for i in entry:
+                            if isinstance(i, str):
+                                i = i.replace(value_in_list, replacement_key)
+                            # Handle lists containing dicts
+                            elif isinstance(i, dict):
+                                # Go through each key/value and replace STREAM with value
+                                keys = list(i)
+                                for k in keys:
+                                    v = i[k]
+                                    del i[k]
+                                    if value_in_list in k:
+                                        new_k = k.replace(value_in_list, replacement_key) if isinstance(k, str) else k
+                                    if value_in_list in v:
+                                        new_v = v.replace(value_in_list, replacement_key) if isinstance(v, str) else v
+                                    i[new_k] = new_v
+                            new_list.append(i)
+                        return new_list
+                    if isinstance(entry, dict):
+                        new_entry = {}
+                        #pdb.set_trace()
+                        for k in list(entry):
+                            v = entry[k]
+                            #del entry[k]
+                            if value_in_list in k:
+                                new_k = k.replace(value_in_list, replacement_key) if isinstance(k, str) else k
+                            else:
+                                new_k = k
+                            #pdb.set_trace()
+                            new_v = helper_dict_replacer(v, value_in_list, replacement_key)
+                            #pdb.set_trace()
+                            new_entry[new_k] = new_v
+                        return new_entry
+
+                if isinstance(rhs, dict):
+                    replacement_dict = {}
+                    keys_of_rhs_dict = list(rhs)
+                    for replacement_key in entries_of_key:
+                        inner_replacement_dict = replacement_dict[ok_part+replacement_key+new_raw] = {}
+                        for rhs_key in keys_of_rhs_dict:
+                            entry = rhs[rhs_key]
+                            # del rhs[rhs_key]
+                            if isinstance(rhs_key, str):
+                                new_rhs_key = rhs_key.replace(value_in_list, replacement_key) if isinstance(rhs_key, str) else rhs_key
+                                new_entry = helper_dict_replacer(entry, value_in_list, replacement_key)
+                                inner_replacement_dict[new_rhs_key] = new_entry
+                            else:
+                                raise NotImplementedError("Nested multikey replacement for dicts is only implement for str keys right now!")
+                    return_dict2 = replacement_dict
+
                 if list_fence in new_raw:
                     for key, value in six.iteritems(return_dict2):
                         return_dict.update(
@@ -1516,7 +1587,9 @@ def list_to_multikey(tree, rhs, config_to_search, ignore_list, isblacklist):
             actual_list, new_raw = rest.split(list_end, 1)
             key_in_list, value_in_list = actual_list.split("-->", 1)
             key_elements = key_in_list.split(".")
-            entries_of_key, _ = actually_find_variable(tree, key_in_list, config_to_search)
+            entries_of_key, _ = actually_find_variable(
+                tree, key_in_list, config_to_search
+            )
             if isinstance(entries_of_key, str):
                 entries_of_key = [entries_of_key]
             for entry in entries_of_key:
@@ -1561,7 +1634,9 @@ def determine_computer_from_hostname():
     for this_computer in all_computers:
         for computer_pattern in all_computers[this_computer].values():
             if isinstance(computer_pattern, str):
-                if re.match(computer_pattern, socket.gethostname()) or re.match(computer_pattern, socket.getfqdn()):
+                if re.match(computer_pattern, socket.gethostname()) or re.match(
+                    computer_pattern, socket.getfqdn()
+                ):
                     return FUNCTION_PATH + "/machines/" + this_computer + ".yaml"
             elif isinstance(computer_pattern, (list, tuple)):
                 # Pluralize to avoid confusion:
@@ -1606,28 +1681,92 @@ def do_math_in_entry(tree, rhs, config):
                 if step in ["+", "-"]:
                     math = math + step
                 elif "seconds" in step:
-                    tupel = "(0, 0, 0, 0, 0," + step.replace('seconds','').replace('\"', '').replace('\'', '').strip() +")"
+                    tupel = (
+                        "(0, 0, 0, 0, 0,"
+                        + step.replace("seconds", "")
+                        .replace('"', "")
+                        .replace("'", "")
+                        .strip()
+                        + ")"
+                    )
                     math = math + tupel
                 elif "minutes" in step:
-                    tupel = (0, 0, 0, 0, step.replace('minutes','').replace('\"', '').replace('\'', '').strip(), 0)
+                    tupel = (
+                        0,
+                        0,
+                        0,
+                        0,
+                        step.replace("minutes", "")
+                        .replace('"', "")
+                        .replace("'", "")
+                        .strip(),
+                        0,
+                    )
                     math = math + str(tupel)
                 elif "hours" in step:
-                    tupel = (0, 0, 0, step.replace('hours','').replace('\"', '').replace('\'', '').strip(), 0, 0)
+                    tupel = (
+                        0,
+                        0,
+                        0,
+                        step.replace("hours", "")
+                        .replace('"', "")
+                        .replace("'", "")
+                        .strip(),
+                        0,
+                        0,
+                    )
                     math = math + str(tupel)
                 elif "days" in step:
-                    tupel = (0, 0, step.replace('days','').replace('\"', '').replace('\'', '').strip(), 0, 0, 0)
+                    tupel = (
+                        0,
+                        0,
+                        step.replace("days", "")
+                        .replace('"', "")
+                        .replace("'", "")
+                        .strip(),
+                        0,
+                        0,
+                        0,
+                    )
                     math = math + tupel
                 elif "months" in step:
-                    tupel = (0, step.replace('months','').replace('\"', '').replace('\'', '').strip(), 0, 0, 0, 0)
+                    tupel = (
+                        0,
+                        step.replace("months", "")
+                        .replace('"', "")
+                        .replace("'", "")
+                        .strip(),
+                        0,
+                        0,
+                        0,
+                        0,
+                    )
                     math = math + tupel
                 elif "years" in step:
-                    tupel = (step.replace('years','').replace('\"', '').replace('\'', '').strip(), 0, 0, 0, 0, 0)
+                    tupel = (
+                        step.replace("years", "")
+                        .replace('"', "")
+                        .replace("'", "")
+                        .strip(),
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                    )
                     math = math + tupel
                 else:
-                    all_dates.append(Date(step.replace(DATE_MARKER, ""), config["general"]["calendar"]))
+                    all_dates.append(
+                        Date(
+                            step.replace(DATE_MARKER, ""), config["general"]["calendar"]
+                        )
+                    )
                     math = math + "all_dates[" + str(index) + "]"
                     index += 1
-        result = str(eval(math))
+        result = eval(math)
+        if type(result) == list:
+            result = result[-1] # should be extended in the future - here: if list (= if diff between dates) than result in seconds
+        result = str(result)
         entry = before_math + result + after_math
     return convert(entry.strip())
 
@@ -1709,39 +1848,44 @@ def to_boolean(value):
 
 def could_be_bool(value):
     if type(value) == bool:
-        return(True)
+        return True
     elif type(value) == str:
         if value.strip() in ["True", "true", "False", "false", ".true.", ".false."]:
-            return(True)
-    return(False)    
+            return True
+    return False
+
 
 def could_be_int(value):
     try:
         int(value)
-        return(True)
+        return True
     except:
         try:
-            intval = int(float(value)) # that is actually necessary, because of int("48.0")
-            if intval - float(value) == 0.:
-                return(True)
+            intval = int(
+                float(value)
+            )  # that is actually necessary, because of int("48.0")
+            if intval - float(value) == 0.0:
+                return True
             else:
-                return(False)
+                return False
         except:
-            return(False)
+            return False
+
 
 def could_be_float(value):
     try:
         float(value)
-        return(True)
+        return True
     except:
-        return(False)
+        return False
+
 
 def could_be_complex(value):
     try:
         complex(value)
-        return(True)
+        return True
     except:
-        return(False)
+        return False
 
 
 def convert(value):
@@ -1753,7 +1897,7 @@ def convert(value):
         return float(value)
     elif could_be_complex(value):
         return complex(value)
-    return(value)
+    return value
 
 
 def list_all_keys_with_priority_marker(config):
@@ -1796,9 +1940,9 @@ def choose_blocks(config, blackdict={}, isblacklist=True):
             if name_chooses == []:
                 continue
             for key, block in name_chooses:
-                all_set_variables[name][
-                    key
-                ] = determine_set_variables_in_choose_block(block, all_names, name)
+                all_set_variables[name][key] = determine_set_variables_in_choose_block(
+                    block, all_names, name
+                )
 
             task_list = model_with_choose, choose_key = find_one_independent_choose(
                 all_set_variables
@@ -1897,9 +2041,9 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
             
             if "include_models" in self.config:
                 setup_config["general"]["include_models"] = self.config[
-                "include_models"
-            ]
-            setup_config[self.config["model"]]=self.config
+                    "include_models"
+                ]
+            setup_config[self.config["model"]] = self.config
 
             setup_config["general"]["valid_setup_names"] = valid_setup_names = list(
                 setup_config
