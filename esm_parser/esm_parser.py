@@ -156,12 +156,12 @@ def initialize_from_yaml(filepath):
         if filepath.endswith(file_ending) and not file_ending == "":
             user_config = yaml_file_to_dict(filepath)
             user_config = complete_config(user_config)       
+    return user_config
 
 
-
-
-
-def complete_config(user_config):       
+def complete_config(user_config):   
+    if not "general" in user_config:
+        user_config["general"] = {}
     user_config["general"]["additional_files"] = []
 
     while True:
@@ -175,32 +175,12 @@ def complete_config(user_config):
                     additional_file = user_config[model]["further_reading"]
                     if not additional_file in user_config["general"]["additional_files"]:
                         user_config["general"]["additional_files"].append(additional_file)
-
-        if "further_reading" in user_config["general"]:
-            user_config["further_reading"] = user_config["general"]["further_reading"]
-            del user_config["general"]["further_reading"]
-            for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
-                attach_to_config_and_remove(user_config, attachment)
-
-        for model in list(user_config):
-            if "further_reading" in user_config[model]:
-                if type(user_config[model]["further_reading"]) == list:
-                    for additional_file in user_config[model]["further_reading"]:
-                        if not additional_file in user_config["general"]["additional_files"]:
-                            user_config["general"]["additional_files"].append(additional_file)
-                elif type(user_config[model]["further_reading"]) == str:
-                    additional_file = user_config[model]["further_reading"]
-                    if not additional_file in user_config["general"]["additional_files"]:
-                        user_config["general"]["additional_files"].append(additional_file)
-
-        if "further_reading" in user_config["general"]:
-            user_config["further_reading"] = user_config["general"]["further_reading"]
-            del user_config["general"]["further_reading"]
-
-        for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
-            attach_to_config_and_remove(user_config, attachment)
-            for model in list(user_config):
-                attach_to_config_and_remove(user_config[model], attachment)
+                if model == "general":
+                    user_config["further_reading"] = user_config["general"]["further_reading"]
+                    del user_config["general"]["further_reading"]
+                    attach_to_config_and_remove(user_config, "further_reading")
+                else:
+                    attach_to_config_and_remove(user_config[model], "further_reading")
 
         found = False
         for model in user_config:
