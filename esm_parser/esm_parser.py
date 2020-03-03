@@ -287,12 +287,25 @@ def attach_to_config_and_reduce_keyword(
         # FIXME: Does this only need to work for lists?
         if isinstance(config_to_read_from[full_keyword], list):
             for item in config_to_read_from[full_keyword]:
-                model, model_part = (item.split(".")[0], ".".join(item.split(".")[1:]))
+                model = item
+                if "-" in item:
+                    model, rest = (item.split("-")[0], "-".join(item.split("-")[1:]))
+                else:
+                    if "." in item:
+                        model, model_part = (item.split(".")[0], ".".join(item.split(".")[1:]))
+                        logger.debug("Attaching: %s for %s", model_part, model)
+                    else:
+                        if item in config_to_read_from: 
+                            if "version" in config_to_read_from[item]:
+                                item = model + "-" + config_to_read_from[item]["version"]
 
-                logger.debug("Reading %s", FUNCTION_PATH + "/" + model + "/" + item)
-                tmp_config = yaml_file_to_dict(FUNCTION_PATH + "/" + model + "/" + item)
-
-                logger.debug("Attaching: %s for %s", model_part, model)
+                try:
+                    logger.debug("Reading %s", FUNCTION_PATH + "/" + model + "/" + item)
+                    tmp_config = yaml_file_to_dict(FUNCTION_PATH + "/" + model + "/" + item)
+                except:
+                    logger.debug("Reading %s", FUNCTION_PATH + "/" + model + "/" + model)
+                    tmp_config = yaml_file_to_dict(FUNCTION_PATH + "/" + model + "/" + model)
+                    
                 config_to_write_to[tmp_config["model"]] = tmp_config
 
                 for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
@@ -587,8 +600,8 @@ def find_add_entries_in_config(mapping, model_name):
                 if not "." in key:
                     key = "add_" + model_name + "." + key.split("add_")[-1]
                 all_adds.append((key, value))
-            if isinstance(value, dict):
-                mappings.append(value)
+     #       if isinstance(value, dict):
+     #           mappings.append(value)
     # all_adds = [(add_echam.forcing_files, [sst, sic,])]
     # NOTE: Not Allowed: all_adds = [(add_echam.forcing_files, sst)]
     return all_adds
@@ -1013,7 +1026,7 @@ def resolve_basic_choose(config, config_to_replace_in, choose_key, blackdict={})
             # print("BEEEEE CALM, resolved: " + choice)
         except:
             #print("BEEEEE CAREFUL, did not resolve: " + choose_key)
-            logging.warning("Variable %s as a choice, skipping...", choice)
+            #logging.warning("Variable %s as a choice, skipping...", choice)
             #del config_to_replace_in[choose_key]
             gray_list.append(re.compile(choose_key))
             return
@@ -1956,13 +1969,20 @@ def choose_blocks(config, blackdict={}, isblacklist=True):
 class GeneralConfig(dict):  # pragma: no cover
     """ All configs do this! """
 
-    def __init__(self, path, user_config):
+    def __init__(self, model, version, user_config):
         super(dict, self).__init__()
-        if os.path.isfile(path):
-            config_path = path
+        if os.path.isfile(model+"-"+version):
+            config_path = model+"-"+version
+        elif os.path.isfile(model):
+            config_path = model
         else:
-            config_path = FUNCTION_PATH + "/" + path + "/" + path
-        self.config = yaml_file_to_dict(config_path)
+            try:
+                config_path = FUNCTION_PATH + "/" + model + "/" + model + "-" + version
+                self.config = yaml_file_to_dict(config_path)
+            except:
+                config_path = FUNCTION_PATH + "/" + model + "/" + model
+                self.config = yaml_file_to_dict(config_path)
+        #self.config = yaml_file_to_dict(config_path)
         for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
             attach_to_config_and_remove(self.config, attachment)
         self._config_init(user_config)
@@ -2042,8 +2062,19 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
              "expid": "test"}
         )
 
+
+
         # setup_config should be ok now
         # model_config:
+
+        if "include_models" in setup_config["general"]:
+            new_model_list = []
+            for model in setup_config["general"]["include_models"]:
+                if not "-" in model and model in user_config and "version" in user_config[model]:
+                    new_model_list.append(model + "-" + user_config[model]["version"])
+                else:
+                    new_model_list.append(model)
+            setup_config["general"]["include_models"] = new_model_list
 
         model_config = {}
         attach_to_config_and_reduce_keyword(
@@ -2058,6 +2089,12 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
             for model in list(model_config):
                 for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
                     attach_to_config_and_remove(model_config[model], attachment)
+
+        if "models" in setup_config["general"]:
+            new_model_list = []
+            for model in setup_config["general"]["models"]:
+                new_model_list.append(model.split("-")[0])
+            setup_config["general"]["models"] = new_model_list
 
         for model in list(model_config):
             setup_config["general"]["valid_model_names"].append(model)
