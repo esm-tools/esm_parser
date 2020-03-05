@@ -2067,11 +2067,15 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
         # setup_config should be ok now
         # model_config:
 
+        old_model_list = None
         if "include_models" in setup_config["general"]:
             new_model_list = []
+            old_model_list = setup_config["general"]["include_models"].copy()
             for model in setup_config["general"]["include_models"]:
                 if not "-" in model and model in user_config and "version" in user_config[model]:
                     new_model_list.append(model + "-" + user_config[model]["version"])
+                elif not "-" in model and model in setup_config and "version" in setup_config[model]:
+                    new_model_list.append(model + "-" + setup_config[model]["version"])
                 else:
                     new_model_list.append(model)
             setup_config["general"]["include_models"] = new_model_list
@@ -2080,6 +2084,11 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
         attach_to_config_and_reduce_keyword(
             setup_config["general"], model_config, "include_models", "models"
         )
+
+        if old_model_list:
+            print (old_model_list)
+            setup_config["general"]["models"] = old_model_list.copy()
+
         if "models" in setup_config["general"]:
             for model in setup_config["general"]["models"]:
                 if model in model_config:
@@ -2090,11 +2099,11 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
                 for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
                     attach_to_config_and_remove(model_config[model], attachment)
 
-        if "models" in setup_config["general"]:
-            new_model_list = []
-            for model in setup_config["general"]["models"]:
-                new_model_list.append(model.split("-")[0])
-            setup_config["general"]["models"] = new_model_list
+        #if "models" in setup_config["general"]:
+        #    new_model_list = []
+        #    for model in setup_config["general"]["models"]:
+        #        new_model_list.append(model.split("-")[0])
+        #    setup_config["general"]["models"] = new_model_list
 
         for model in list(model_config):
             setup_config["general"]["valid_model_names"].append(model)
