@@ -13,8 +13,8 @@ with open('HISTORY.rst') as history_file:
 requirements = ["pyyaml>=5.1", 
                 "coloredlogs", 
                 "six", 
-                'esm_calendar @ git+https://gitlab.awi.de/esm_tools/esm_calendar.git',
-                'esm_rcfile @ git+https://gitlab.awi.de/esm_tools/esm_rcfile.git' ]
+                'esm_calendar @ git+https://github.com/esm-tools/esm_calendar.git',
+                'esm_rcfile @ git+https://github.com/esm-tools/esm_rcfile.git' ]
 
 setup_requirements = [ ]
 
