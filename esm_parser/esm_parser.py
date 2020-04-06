@@ -2040,7 +2040,7 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
         else:
             setup_config["general"].update({"standalone": True})
             setup_config["general"].update({"models": [self.config["model"]]})
-            
+      
             if "include_models" in self.config:
                 setup_config["general"]["include_models"] = self.config[
                     "include_models"
@@ -2071,6 +2071,8 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
         if "include_models" in setup_config["general"]:
             new_model_list = []
             old_model_list = setup_config["general"]["include_models"].copy()
+            if "models" in setup_config["general"]:
+                old_model_list += setup_config["general"]["models"].copy()
             for model in setup_config["general"]["include_models"]:
                 if not "-" in model and model in user_config and "version" in user_config[model]:
                     new_model_list.append(model + "-" + user_config[model]["version"])
@@ -2086,8 +2088,9 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
         )
 
         if old_model_list:
-            print (old_model_list)
-            setup_config["general"]["models"] = old_model_list.copy()
+            #print (old_model_list)
+            setup_config["general"]["models"] = old_model_list
+
 
         if "models" in setup_config["general"]:
             for model in setup_config["general"]["models"]:
