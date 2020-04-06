@@ -2070,7 +2070,9 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
         old_model_list = None
         if "include_models" in setup_config["general"]:
             new_model_list = []
-            old_model_list = setup_config["general"]["models"].copy() + setup_config["general"]["include_models"].copy()
+            old_model_list = setup_config["general"]["include_models"].copy()
+            if "models" in setup_config["general"]:
+                old_model_list += setup_config["general"]["models"].copy()
             for model in setup_config["general"]["include_models"]:
                 if not "-" in model and model in user_config and "version" in user_config[model]:
                     new_model_list.append(model + "-" + user_config[model]["version"])
