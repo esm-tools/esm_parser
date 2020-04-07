@@ -1821,6 +1821,41 @@ def unmark_dates(tree, rhs, config):
     return entry
 
 
+def perform_actions(tree, rhs, config):
+    if not tree[-1]:
+        tree = tree[:-1]
+    lhs = tree[-1]
+
+    entry = rhs
+    if type(entry) == str:
+        if "<--" in entry:
+          left, newrhs = entry.split("<--")
+          action, source = newrhs.split("--")
+          if "${" in source: 
+            source = find_variable(
+                        tree,
+                        source,
+                        config,
+                        [],
+                        True,
+                    )
+
+          parameter = None
+          if "(" in action:
+              action = action.replace(")", "")
+              action, parameter = action.split("(")
+          if "format" in action:
+              if "d" in parameter or "f" in parameter:
+                  source = int(source)
+              if parameter:
+                  solved_rhs = parameter % source
+              else:
+                  solved_rhs = source
+              newrhs = solved_rhs
+              entry = left + newrhs
+    return entry
+
+
 def purify_booleans(tree, rhs, config):
     if not tree[-1]:
         tree = tree[:-1]
@@ -2136,6 +2171,7 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
         recursive_run_function([], config, "atomic", mark_dates, config)
         #pprint_config(config)
         #sys.exit(1)
+        recursive_run_function([], config, "atomic", perform_actions, config)
         recursive_run_function(
             [],
             config,
@@ -2167,5 +2203,3 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
             isblacklist=isblacklist,
         )
         recursive_run_function([], config, "atomic", purify_booleans, config)
-
-
