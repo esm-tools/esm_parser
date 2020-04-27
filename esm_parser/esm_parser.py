@@ -110,8 +110,8 @@ import esm_rcfile
 FUNCTION_PATH = esm_rcfile.FUNCTION_PATH
 
 esm_function_dir = esm_rcfile.FUNCTION_PATH
-esm_namelist_dir = esm_rcfile.get_rc_entry("NAMELIST_PATH")
-esm_runscript_dir = esm_rcfile.get_rc_entry("RUNSCRIPT_PATH")
+esm_namelist_dir = esm_rcfile.get_rc_entry("NAMELIST_PATH", "NONE_YET")
+esm_runscript_dir = esm_rcfile.get_rc_entry("RUNSCRIPT_PATH", "NONE_YET")
 
 gray_list = [
     r"choose_lresume",
@@ -138,6 +138,21 @@ if six.PY2:  # pragma: no cover
 
 
 def shell_file_to_dict(filepath):
+    """
+    Generates a ~`ConfigSetup` from an old shell script.
+
+    See also ~`ShellscriptToUserConfig`
+
+    Parameters
+    ----------
+    filepath : str
+        The file to load
+
+    Returns
+    -------
+    ConfigSetup :
+        The parsed config.
+    """
     config = ShellscriptToUserConfig(filepath)
     config = complete_config(config)
     return config
