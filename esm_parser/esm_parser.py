@@ -441,18 +441,18 @@ def dict_merge(dct, merge_dct):
 
 
 def deep_update(chapter, entries, config, blackdict={}):
-    # if "remove_" in chapter:
-    #    remove_chapter = chapter.replace("remove_", "")
-    #    remove_entries_from_chapter(config, remove_chapter, entries)
-    #    del config[chapter]
+     if "remove_" in chapter:
+        remove_chapter = chapter.replace("remove_", "")
+        remove_entries_from_chapter(config, remove_chapter, entries)
+        #del config[chapter]
 
-    # elif "add_" in chapter:
-    #    add_chapter = chapter.replace("add_", "")
-    #    add_entries_from_chapter(config, add_chapter, entries)
-    #    del config[chapter]
-    # else:
-    if chapter not in blackdict:
-        dict_merge(config, {chapter: entries})
+     elif "add_" in chapter:
+        add_chapter = chapter.replace("add_", "")
+        add_entries_from_chapter(config, add_chapter, entries)
+        #del config[chapter]
+     else:
+        if chapter not in blackdict:
+            dict_merge(config, {chapter: entries})
 
 
 def find_remove_entries_in_config(mapping, model_name):
