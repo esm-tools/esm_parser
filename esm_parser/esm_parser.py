@@ -1701,68 +1701,48 @@ def do_math_in_entry(tree, rhs, config):
                     )
                     math = math + tupel
                 elif "minutes" in step:
-                    tupel = (
-                        0,
-                        0,
-                        0,
-                        0,
+                    tupel = ( "(0, 0, 0, 0," +
                         step.replace("minutes", "")
                         .replace('"', "")
                         .replace("'", "")
-                        .strip(),
-                        0,
+                        .strip()
+                        + ", 0)"
                     )
                     math = math + str(tupel)
                 elif "hours" in step:
-                    tupel = (
-                        0,
-                        0,
-                        0,
+                    tupel = ( "(0, 0, 0," +
                         step.replace("hours", "")
                         .replace('"', "")
                         .replace("'", "")
-                        .strip(),
-                        0,
-                        0,
+                        .strip()
+                        + ", 0, 0)"
                     )
                     math = math + str(tupel)
                 elif "days" in step:
-                    tupel = (
-                        0,
-                        0,
+                    tupel = ( "(0, 0," +
                         step.replace("days", "")
                         .replace('"', "")
                         .replace("'", "")
-                        .strip(),
-                        0,
-                        0,
-                        0,
+                        .strip()
+                        + ", 0, 0, 0)"
                     )
                     math = math + tupel
                 elif "months" in step:
-                    tupel = (
-                        0,
+                    tupel = ( "(0," +
                         step.replace("months", "")
                         .replace('"', "")
                         .replace("'", "")
-                        .strip(),
-                        0,
-                        0,
-                        0,
-                        0,
+                        .strip()
+                        + ", 0, 0, 0, 0)"
                     )
                     math = math + tupel
                 elif "years" in step:
-                    tupel = (
+                    tupel = ( "(" +
                         step.replace("years", "")
                         .replace('"', "")
                         .replace("'", "")
-                        .strip(),
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        .strip()
+                        + ", 0, 0, 0, 0, 0)"
                     )
                     math = math + tupel
                 else:
