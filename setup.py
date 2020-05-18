@@ -52,6 +52,6 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/esm-tools/esm_parser',
-    version="4.0.1",
+    version="4.0.2",
     zip_safe=False,
 )
