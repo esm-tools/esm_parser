@@ -170,11 +170,11 @@ def initialize_from_yaml(filepath):
     for file_ending in YAML_AUTO_EXTENSIONS:
         if filepath.endswith(file_ending) and not file_ending == "":
             user_config = yaml_file_to_dict(filepath)
-            user_config = complete_config(user_config)       
+            user_config = complete_config(user_config)
     return user_config
 
 
-def complete_config(user_config):   
+def complete_config(user_config):
     if not "general" in user_config:
         user_config["general"] = {}
     user_config["general"]["additional_files"] = []
@@ -246,12 +246,12 @@ def attach_to_config_and_reduce_keyword(
     config_to_write_to : dict
         The dictionary where the contents of
         ``config_to_read_from[full_keyword]`` is written in.
-    full_keyword : 
+    full_keyword :
         The keyword where contents are extracted from
     reduced_keyword :
         The keyword where the contents of ``config_to_read_from[full_keyword]``
         are written to
-    level_to_write_to : 
+    level_to_write_to :
         If this is specified, the attached entries are written here instead of
         in the top level of ``config_to_write_to``. Note that only one level
         down is currently supported.
@@ -288,7 +288,7 @@ def attach_to_config_and_reduce_keyword(
                 config_to_read_from[level_to_write_to][
                     reduced_keyword
                 ] += config_to_read_from[full_keyword]
-            else:    
+            else:
                 config_to_read_from[level_to_write_to][
                     reduced_keyword
                 ] = config_to_read_from[full_keyword]
@@ -310,7 +310,7 @@ def attach_to_config_and_reduce_keyword(
                         model, model_part = (item.split(".")[0], ".".join(item.split(".")[1:]))
                         logger.debug("Attaching: %s for %s", model_part, model)
                     else:
-                        if item in config_to_read_from: 
+                        if item in config_to_read_from:
                             if "version" in config_to_read_from[item]:
                                 item = model + "-" + config_to_read_from[item]["version"]
 
@@ -320,7 +320,7 @@ def attach_to_config_and_reduce_keyword(
                 except:
                     logger.debug("Reading %s", FUNCTION_PATH + "/" + model + "/" + model)
                     tmp_config = yaml_file_to_dict(FUNCTION_PATH + "/" + model + "/" + model)
-                    
+
                 config_to_write_to[tmp_config["model"]] = tmp_config
 
                 for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
@@ -1295,7 +1295,7 @@ def recursive_get(config_to_search, config_elements):
 
     Given a list of config elements in the form above (e.g. the result of
     splitting the string ``"outer_key.middle_key.inner_key".split(".")``` on
-    the dot), the value "value" of the innermost nest is returned. 
+    the dot), the value "value" of the innermost nest is returned.
 
     Parameters
     ----------
@@ -1416,6 +1416,9 @@ def find_variable(tree, rhs, full_config, white_or_black_list, isblacklist):
     return raw_str
 
 
+class EsmParserError(Exception):
+    """Raise this error when the parser has problems"""
+
 def actually_find_variable(tree, rhs, full_config):
     config_elements = rhs.split(".")
     valid_names = list(full_config)
@@ -1443,7 +1446,7 @@ def actually_find_variable(tree, rhs, full_config):
             var_result = recursive_get(full_config, config_elements)
             # return var_result
         except:
-            raise ValueError("Sorry: %s not found" % (rhs))
+            raise EsmParserError("Sorry, a variable was not resolved: %s not found" % (rhs))
 
     return var_result, var_attr
 
@@ -1467,7 +1470,7 @@ def list_to_multikey(tree, rhs, config_to_search, ignore_list, isblacklist):
     -----
     Internal variable definitions in this function; based upon the example:
     prefix_[[streams-->STREAM]]_postfix
-    
+
     + ``ok_part``: ``prefix_``
     + ``actual_list``: ``streams-->STREAM``
     + ``key_in_list``: ``streams``
@@ -1831,7 +1834,7 @@ def perform_actions(tree, rhs, config):
         if "<--" in entry:
           left, newrhs = entry.split("<--")
           action, source = newrhs.split("--")
-          if "${" in source: 
+          if "${" in source:
             source = find_variable(
                         tree,
                         source,
@@ -2058,7 +2061,7 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
             setup_config["general"]["include_models"] = self.config["general"][
                 "include_models"
             ]
-    
+
             # that should happen in Shell2Yaml
             if user_config["general"]["setup_name"] in user_config:
                 user_config["general"].update(
@@ -2075,7 +2078,7 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
         else:
             setup_config["general"].update({"standalone": True})
             setup_config["general"].update({"models": [self.config["model"]]})
-      
+
             if "include_models" in self.config:
                 setup_config["general"]["include_models"] = self.config[
                     "include_models"
@@ -2148,7 +2151,7 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
             #valid_model_names.append(list(model_config)) happens automatically
 
         # model_config should be ok now
-        # merge everything    
+        # merge everything
 
         logging.debug("Valid Setup Names = %s", valid_setup_names)
         logging.debug("Valid Model Names = %s", valid_model_names)

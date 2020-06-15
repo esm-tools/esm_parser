@@ -175,7 +175,7 @@ def ShellscriptToUserConfig(runscript_path):
         value = user_config[key]
         if not value:
             del user_config[key]
-    
+
     # mini_recursive_run_func(user_config, remap_old_new_keys)
     mini_recursive_run_func(user_config, purify_cases)
 
