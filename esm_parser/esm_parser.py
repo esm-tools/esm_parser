@@ -968,7 +968,7 @@ def basic_find_one_independent_choose(all_set_variables):
     function ``determine_set_variables_in_choose_block``, gives a list of
     task/variable dependencies to resolve in order to figure out the variable.
 
-    Parameter, self.configs
+    Parameters
     ----------
     all_set_variables : dict
 
