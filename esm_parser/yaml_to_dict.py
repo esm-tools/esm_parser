@@ -57,6 +57,8 @@ def yaml_file_to_dict(filepath):
     ------
     EsmConfigFileError
         Raised when YAML file contains tabs.
+    FileNotFoundError
+        Raised when the YAML file cannot be found and all extensions have been tried.
     """
     for extension in YAML_AUTO_EXTENSIONS:
         try:
