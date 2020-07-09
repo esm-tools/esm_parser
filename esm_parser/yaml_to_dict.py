@@ -14,6 +14,11 @@ class EsmConfigFileError(Exception):
     This error occurs mainly when there are tabs inside a yaml file. This
     exception returns a user-friendly message indicating where the tabs
     are located in the yaml file.
+
+    Parameters
+    ----------
+    fpath : str
+        Path to the yaml file
     """
 
     def __init__(self, fpath):
@@ -47,6 +52,11 @@ def yaml_file_to_dict(filepath):
     -------
     dict
         A dictionary representation of the yaml file.
+
+    Raises
+    ------
+    EsmConfigFileError
+        Raised when YAML file contains tabs.
     """
     for extension in YAML_AUTO_EXTENSIONS:
         try:
