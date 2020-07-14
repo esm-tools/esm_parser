@@ -108,6 +108,8 @@ import esm_rcfile
 
 
 FUNCTION_PATH = esm_rcfile.FUNCTION_PATH
+SETUP_PATH = FUNCTION_PATH + "/setups"
+COMPONENT_PATH = FUNCTION_PATH + "/components"
 
 esm_function_dir = esm_rcfile.FUNCTION_PATH
 esm_namelist_dir = esm_rcfile.get_rc_entry("NAMELIST_PATH", "NONE_YET")
@@ -134,6 +136,26 @@ constant_blacklist = [re.compile(entry) for entry in constant_blacklist]
 # Ensure FileNotFoundError exists:
 if six.PY2:  # pragma: no cover
     FileNotFoundError = IOError
+
+
+def look_for_file(model, item):
+    for possible_path in [
+            SETUP_PATH + "/" + model + "/" + item  ,
+            COMPONENT_PATH + "/" + model + "/" + item ,
+            FUNCTION_PATH + "/" + model + "/" + item ,
+            ]:
+
+        for ending in [
+                "", 
+                ".yaml", 
+                ".yml", 
+                ".YAML", 
+                ".YML", 
+                ]:
+
+            if os.path.isfile(possible_path + ending):
+                return possible_path + ending
+    return None
 
 
 
@@ -314,30 +336,41 @@ def attach_to_config_and_reduce_keyword(
                             if "version" in config_to_read_from[item]:
                                 item = model + "-" + config_to_read_from[item]["version"]
 
-                try:
-                    logger.debug("Reading %s", FUNCTION_PATH + "/" + model + "/" + item)
-                    tmp_config = yaml_file_to_dict(FUNCTION_PATH + "/" + model + "/" + item)
-                except:
-                    logger.debug("Reading %s", FUNCTION_PATH + "/" + model + "/" + model)
-                    tmp_config = yaml_file_to_dict(FUNCTION_PATH + "/" + model + "/" + model)
+                include_path = look_for_file(model, item):
+                if not include_path:
+                    include_path = look_for_file(model, model):
+                if not include_path:
+                    print (f'attach_to_config_and_reduce: File {item} of model {model} could not be found. Sorry.')
+                    sys.exit(-1)
+
+                logger.debug("Reading %s", include_path)
+                tmp_config = yaml_file_to_dict(include_path)
 
                 config_to_write_to[tmp_config["model"]] = tmp_config
 
                 for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
                     logger.debug("Attaching: %s", attachment)
-                    attach_to_config_and_remove(
-                        config_to_write_to[tmp_config["model"]],
-                        FUNCTION_PATH + "/" + model + "/" + attachment,
-                    )
+                    include_path = look_for_file(model, attachment):
+                    if include_path:
+                        logger.debug("Reading %s", include_path)
+                        attach_to_config_and_remove(
+                            config_to_write_to[tmp_config["model"]],
+                            include_path,
+                        )
+                    else:
+                        print (f'Attachment {attachment} of model {model} could not be found. Sorry.')
+                        sys.exit(-1)
+
         else:
             raise TypeError("The entries in %s must be a list!!" % full_keyword)
         del config_to_read_from[full_keyword]
 
 
 def attach_single_config(config, path, attach_value):
-    if os.path.isfile(FUNCTION_PATH + "/" + path + "/" + attach_value):
+    include_path = look_for_file(path, attach_value)
+    if include_path:
         attachable_config = yaml_file_to_dict(
-            FUNCTION_PATH + "/" + path + "/" + attach_value
+                include_path
         )
     elif os.path.isfile(path + "/" + attach_value):
         attachable_config = yaml_file_to_dict(
@@ -2004,18 +2037,24 @@ class GeneralConfig(dict):  # pragma: no cover
 
     def __init__(self, model, version, user_config):
         super(dict, self).__init__()
+
+
+
+
         if os.path.isfile(model+"-"+version):
             config_path = model+"-"+version
         elif os.path.isfile(model):
             config_path = model
         else:
-            try:
-                config_path = FUNCTION_PATH + "/" + model + "/" + model + "-" + version
-                self.config = yaml_file_to_dict(config_path)
-            except:
-                config_path = FUNCTION_PATH + "/" + model + "/" + model
-                self.config = yaml_file_to_dict(config_path)
-        #self.config = yaml_file_to_dict(config_path)
+
+            include_path = look_for_file(model, model + "-" + version)
+            if not include_path:
+                include_path = look_for_file(model, model)
+            if not include_path:
+                print(f"GeneralConfig: Couldn't find file for model {model}")
+                sys.exit(-1)
+
+        self.config = yaml_file_to_dict(include_path)
         for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
             attach_to_config_and_remove(self.config, attachment)
         self._config_init(user_config)
