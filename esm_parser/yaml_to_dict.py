@@ -8,12 +8,13 @@ YAML_AUTO_EXTENSIONS = ["", ".yml", ".yaml", ".YML", ".YAML"]
 
 class EsmConfigFileError(Exception):
     """
-    Exception for yaml file containing tabs.
+    Exception for yaml file containing tabs or other syntax issues.
 
     An exception used when yaml.load() throws a yaml.scanner.ScannerError.
-    This error occurs mainly when there are tabs inside a yaml file. This
-    exception returns a user-friendly message indicating where the tabs
-    are located in the yaml file.
+    This error occurs mainly when there are tabs inside a yaml file or
+    when the syntax is incorrect. If tabs are found, this exception returns
+    a user-friendly message indicating where the tabs are located in the
+    yaml file.
 
     Parameters
     ----------
@@ -21,7 +22,7 @@ class EsmConfigFileError(Exception):
         Path to the yaml file
     """
 
-    def __init__(self, fpath):
+    def __init__(self, fpath, yaml_error):
         report = ""
         # Loop through the lines inside the yaml file searching for tabs
         with open(fpath) as yaml_file:
@@ -31,9 +32,14 @@ class EsmConfigFileError(Exception):
                     report += str(n) + ":" + line.replace("\t","____") + "\n"
 
         # Message to return
-        self.message =  "\n\n\n" \
-                       f"Your file {fpath} has tabs, please use ONLY spaces!\n" \
-                        "Tabs are in following lines:\n" + report
+        if len(report)==0:
+            # If no tabs are found print the original error message
+            print("\n\n\n" + error_yaml)
+        else:
+            # If tabs are found print the report
+            self.message =  "\n\n\n" \
+                           f"Your file {fpath} has tabs, please use ONLY spaces!\n" \
+                            "Tabs are in following lines:\n" + report
         super().__init__(self.message)
 
 def yaml_file_to_dict(filepath):
@@ -56,7 +62,7 @@ def yaml_file_to_dict(filepath):
     Raises
     ------
     EsmConfigFileError
-        Raised when YAML file contains tabs.
+        Raised when YAML file contains tabs or other syntax issues.
     FileNotFoundError
         Raised when the YAML file cannot be found and all extensions have been tried.
     """
@@ -70,11 +76,11 @@ def yaml_file_to_dict(filepath):
                 error.errno,
                 filepath + extension,
             )
-        except yaml.scanner.ScannerError as error:
-            logger.debug("Your file %s has tabs, please use only spaces!",
+        except yaml.scanner.ScannerError as yaml_error:
+            logger.debug("Your file %s has syntax issues!",
                 filepath + extension,
             )
-            raise EsmConfigFileError(filepath + extension)
+            raise EsmConfigFileError(filepath + extension, yaml_error)
     raise FileNotFoundError(
         "All file extensions tried and none worked for %s" % filepath
     )
