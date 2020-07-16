@@ -109,7 +109,9 @@ import esm_rcfile
 
 FUNCTION_PATH = esm_rcfile.FUNCTION_PATH
 SETUP_PATH = FUNCTION_PATH + "/setups"
+DEFAULTS_DIR = FUNCTION_PATH + "/defaults"
 COMPONENT_PATH = FUNCTION_PATH + "/components"
+
 
 esm_function_dir = esm_rcfile.FUNCTION_PATH
 esm_namelist_dir = esm_rcfile.get_rc_entry("NAMELIST_PATH", "NONE_YET")
@@ -142,6 +144,8 @@ def look_for_file(model, item):
     for possible_path in [
             SETUP_PATH + "/" + model + "/" + item  ,
             COMPONENT_PATH + "/" + model + "/" + item ,
+            FUNCTION_PATH + "/esm_software/" + model + "/" + item, 
+            FUNCTION_PATH + "/other_software/" + model + "/" + item, 
             FUNCTION_PATH + "/" + model + "/" + item ,
             ]:
 
@@ -200,6 +204,8 @@ def complete_config(user_config):
     if not "general" in user_config:
         user_config["general"] = {}
     user_config["general"]["additional_files"] = []
+
+
 
     while True:
         for model in list(user_config):
@@ -336,9 +342,9 @@ def attach_to_config_and_reduce_keyword(
                             if "version" in config_to_read_from[item]:
                                 item = model + "-" + config_to_read_from[item]["version"]
 
-                include_path = look_for_file(model, item):
+                include_path = look_for_file(model, item)
                 if not include_path:
-                    include_path = look_for_file(model, model):
+                    include_path = look_for_file(model, model)
                 if not include_path:
                     print (f'attach_to_config_and_reduce: File {item} of model {model} could not be found. Sorry.')
                     sys.exit(-1)
@@ -350,17 +356,11 @@ def attach_to_config_and_reduce_keyword(
 
                 for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
                     logger.debug("Attaching: %s", attachment)
-                    include_path = look_for_file(model, attachment):
-                    if include_path:
-                        logger.debug("Reading %s", include_path)
-                        attach_to_config_and_remove(
-                            config_to_write_to[tmp_config["model"]],
-                            include_path,
-                        )
-                    else:
-                        print (f'Attachment {attachment} of model {model} could not be found. Sorry.')
-                        sys.exit(-1)
-
+                    attach_to_config_and_remove(
+                        config_to_write_to[tmp_config["model"]],
+                        attachment,
+                    )
+                
         else:
             raise TypeError("The entries in %s must be a list!!" % full_keyword)
         del config_to_read_from[full_keyword]
@@ -2057,6 +2057,7 @@ class GeneralConfig(dict):  # pragma: no cover
         self.config = yaml_file_to_dict(include_path)
         for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
             attach_to_config_and_remove(self.config, attachment)
+
         self._config_init(user_config)
         for k, v in six.iteritems(self.config):
             self.__setitem__(k, v)
@@ -2076,6 +2077,15 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
         # self.config contains first yaml file and further_readings
 
         # setup_config:
+
+        if not "defaults" in user_config:
+            user_config["defaults"] = {}
+
+        default_infos = {}
+        for i in os.listdir(DEFAULTS_DIR): 
+            file_contents = yaml_file_to_dict(DEFAULTS_DIR + "/" + i)
+            default_infos.update(file_contents)
+        user_config["defaults"].update(default_infos)
 
         setup_config = {
             "computer": yaml_file_to_dict(determine_computer_from_hostname()),
