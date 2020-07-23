@@ -6,6 +6,7 @@ DEBUG_MODE = logger.level == logging.DEBUG
 
 YAML_AUTO_EXTENSIONS = ["", ".yml", ".yaml", ".YML", ".YAML"]
 
+
 class EsmConfigFileError(Exception):
     """
     Exception for yaml file containing tabs or other syntax issues.
@@ -29,18 +30,19 @@ class EsmConfigFileError(Exception):
             for n, line in enumerate(yaml_file):
                 # Save lines and line numbers with tabs
                 if "\t" in line:
-                    report += str(n) + ":" + line.replace("\t","____") + "\n"
+                    report += str(n) + ":" + line.replace("\t", "____") + "\n"
 
         # Message to return
-        if len(report)==0:
+        if len(report) == 0:
             # If no tabs are found print the original error message
-            print("\n\n\n" + error_yaml)
+            print("\n\n\n" + yaml_error)
         else:
             # If tabs are found print the report
-            self.message =  "\n\n\n" \
+            self.message = "\n\n\n" \
                            f"Your file {fpath} has tabs, please use ONLY spaces!\n" \
                             "Tabs are in following lines:\n" + report
         super().__init__(self.message)
+
 
 def yaml_file_to_dict(filepath):
     """
@@ -84,5 +86,3 @@ def yaml_file_to_dict(filepath):
     raise FileNotFoundError(
         "All file extensions tried and none worked for %s" % filepath
     )
-
-
