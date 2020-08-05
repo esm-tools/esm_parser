@@ -71,6 +71,7 @@ import socket
 import subprocess
 import sys
 import warnings
+import numpy
 
 # Always import externals before any non standard library imports
 
@@ -1307,11 +1308,23 @@ def recursive_run_function(tree, right, level, func, *args, **kwargs):
     # logger.debug("finished with do_func_for")
 
     if isinstance(right, list):
+        newright = []
         for index, item in enumerate(right):
             new_item = recursive_run_function(
                 tree + [None], item, level, func, *args, **kwargs
             )
-            right[index] = new_item
+            """
+                We are not supposed to understand this from Sept 01 2020 on
+                takes care of list_to_multikey returning a list, that needs to be
+                merged into the existing list rather than become a list within lists
+                extremely undesirable way of solving this
+                Miguels fault
+            """
+            if type(item) == str and "[[" in item and func == list_to_multikey:
+                newright += new_item
+            else:
+                newright.append(new_item)
+        right = newright
     elif isinstance(right, dict):
         keys = list(right)
         for key in keys:
@@ -1640,8 +1653,8 @@ def list_to_multikey(tree, rhs, config_to_search, ignore_list, isblacklist):
                 entries_of_key = [entries_of_key]
             for entry in entries_of_key:
                 rhs_list.append(
-                    rhs.replace("[[" + actual_list + "]]", entry).replace(
-                        value_in_list, entry
+                    rhs.replace("[[" + actual_list + "]]", str(entry)).replace(
+                        value_in_list, str(entry) 
                     )
                 )
             if list_fence in new_raw:
@@ -1856,9 +1869,10 @@ def perform_actions(tree, rhs, config):
     if not tree[-1]:
         tree = tree[:-1]
     lhs = tree[-1]
-
     entry = rhs
     if type(entry) == str:
+        if "[[" in entry:
+            return rhs
         if "<--" in entry:
           left, newrhs = entry.split("<--")
           action, source = newrhs.split("--")
@@ -1884,6 +1898,20 @@ def perform_actions(tree, rhs, config):
                   solved_rhs = source
               newrhs = solved_rhs
               entry = left + newrhs
+          if "fseq" in action:
+              rest = source.replace("<--fseq-- ", "").strip()
+              try:
+                start, stop, step, precision = rest.split(" ")
+              except:
+                  precision = 4
+                  try:
+                    start, stop, step = rest.split(" ")
+                  except:
+                    start, stop = rest.split(" ")
+                    step = 1
+
+              numpyentry = list(numpy.arange(float(start), float(stop), float(step)))
+              entry = [round(float(number), precision) for number in numpyentry]
     return entry
 
 
@@ -2216,8 +2244,6 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
     def run_recursive_functions(self, config, isblacklist=True):
         logging.debug("Top of run recursive functions")
         recursive_run_function([], config, "atomic", mark_dates, config)
-        #pprint_config(config)
-        #sys.exit(1)
         recursive_run_function([], config, "atomic", perform_actions, config)
         recursive_run_function(
             [],
@@ -2250,3 +2276,4 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
             isblacklist=isblacklist,
         )
         recursive_run_function([], config, "atomic", purify_booleans, config)
+        recursive_run_function([], config, "atomic", perform_actions, config)
