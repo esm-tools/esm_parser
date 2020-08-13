@@ -1631,19 +1631,22 @@ def list_to_multikey(tree, rhs, config_to_search, ignore_list, isblacklist):
             rhs_list = []
             ok_part, rest = rhs.split(list_fence, 1)
             actual_list, new_raw = rest.split(list_end, 1)
-            key_in_list, value_in_list = actual_list.split("-->", 1)
-            key_elements = key_in_list.split(".")
-            entries_of_key, _ = actually_find_variable(
-                tree, key_in_list, config_to_search
-            )
-            if isinstance(entries_of_key, str):
-                entries_of_key = [entries_of_key]
-            for entry in entries_of_key:
-                rhs_list.append(
-                    rhs.replace("[[" + actual_list + "]]", entry).replace(
-                        value_in_list, entry
-                    )
+            # seb-wahl: check if a [[ ...]] entry in the string parsed contains
+            # '-->' to avoid a crash if a shell command such as 'if [[ ...]]; then' is parsed
+            if '-->' in actual_list:
+                key_in_list, value_in_list = actual_list.split("-->", 1)
+                key_elements = key_in_list.split(".")
+                entries_of_key, _ = actually_find_variable(
+                    tree, key_in_list, config_to_search
                 )
+                if isinstance(entries_of_key, str):
+                    entries_of_key = [entries_of_key]
+                for entry in entries_of_key:
+                    rhs_list.append(
+                        rhs.replace("[[" + actual_list + "]]", entry).replace(
+                            value_in_list, entry
+                        )
+                    )
             if list_fence in new_raw:
                 out_list = []
                 for rhs_listitem in rhs_list:
