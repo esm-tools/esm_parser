@@ -145,17 +145,17 @@ def look_for_file(model, item):
     for possible_path in [
             SETUP_PATH + "/" + model + "/" + item  ,
             COMPONENT_PATH + "/" + model + "/" + item ,
-            FUNCTION_PATH + "/esm_software/" + model + "/" + item, 
-            FUNCTION_PATH + "/other_software/" + model + "/" + item, 
+            FUNCTION_PATH + "/esm_software/" + model + "/" + item,
+            FUNCTION_PATH + "/other_software/" + model + "/" + item,
             FUNCTION_PATH + "/" + model + "/" + item ,
             ]:
 
         for ending in [
-                "", 
-                ".yaml", 
-                ".yml", 
-                ".YAML", 
-                ".YML", 
+                "",
+                ".yaml",
+                ".yml",
+                ".YAML",
+                ".YML",
                 ]:
 
             if os.path.isfile(possible_path + ending):
@@ -361,7 +361,7 @@ def attach_to_config_and_reduce_keyword(
                         config_to_write_to[tmp_config["model"]],
                         attachment,
                     )
-                
+
         else:
             raise TypeError("The entries in %s must be a list!!" % full_keyword)
         del config_to_read_from[full_keyword]
@@ -1063,7 +1063,7 @@ def resolve_basic_choose(config, config_to_replace_in, choose_key, blackdict={})
         choice = recursive_get(config, path_to_key)
     except ValueError:
         if "*" not in config_to_replace_in[choose_key]:
-            raise KeyError("Key %s was not defined", path_to_key)
+            raise KeyError("Key %s was not defined" % ".".join(path_to_key))
         else:
             del config_to_replace_in[choose_key]
             return
@@ -2121,7 +2121,7 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
             user_config["defaults"] = {}
 
         default_infos = {}
-        for i in os.listdir(DEFAULTS_DIR): 
+        for i in os.listdir(DEFAULTS_DIR):
             file_contents = yaml_file_to_dict(DEFAULTS_DIR + "/" + i)
             default_infos.update(file_contents)
         user_config["defaults"].update(default_infos)
