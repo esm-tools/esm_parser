@@ -106,11 +106,14 @@ def check_changes_duplicates(yamldict_all, fpath):
         for changes_group in changes_groups:
             # Check for ``_changes`` without ``choose_``, "there can be only one"
             changes_no_choose = [x for x in changes_group if "choose_" not in x]
+            # If more than one ``_changes`` without ``choose_`` return error
             if len(changes_no_choose) > 1:
                 changes_no_choose = [x.replace(",",".") for x in changes_no_choose]
                 raise Exception("\n\nMore than one ``_changes`` out of a ``choose_``in "
                                 + fpath + ":\n    - " + "\n    - ".join(changes_no_choose) +
                                 "\n" + changes_note + "\n\n")
+            # If only one ``_changes`` without ``choose_`` check for ``_changes`` inside
+            # ``choose_`` and return error if any is found
             elif len(changes_no_choose) == 1:
                 changes_group.remove(changes_no_choose[0])
                 if len(changes_group) > 0:
@@ -121,13 +124,36 @@ def check_changes_duplicates(yamldict_all, fpath):
                                     "\n    - ".join(changes_group) + "\n" +
                                     "\n" + changes_note + "\n\n")
 
-            # Check for incompatible ``_changes`` inside ``choose_``
+            # If you reach this point all ``_changes`` are inside
+            # some number of ``choose_`` (there are no ``_changes``
+            # outside of a ``choose_``)
+
+            # Check for incompatible ``_changes`` inside ``choose_``:
+            # Split the path of the variables
             changes_group_split = [x.split(",") for x in changes_group]
+            # Loop through the paths of the ``_changes`` in the group
             for count, changes in enumerate(changes_group_split):
+                # Find the path of the last ``choose_`` in ``changes`` and
+                # its case
                 path2choose, case = find_last_choose(changes)
+                # Loop through the changes following the current one
                 for other_changes in changes_group_split[count+1:]:
+                    # Find the path of the last ``choose_`` in
+                    # ``other_changes`` and its case
                     sub_path2choose, sub_case = find_last_choose(other_changes)
+                    # If one ``choose_`` is contained into the other
+                    # find the common ``choose_`` and compare the cases.
+                    # If the case is the same, duplicates exist and error
+                    # is returned (i.e. choose_lresume.True.namelist_changes
+                    # and choose_lresume.True.choose_another_switch
+                    # False.namelist_changes)
                     if path2choose in sub_path2choose or sub_path2choose in path2choose:
+                        if path2choose in sub_path2choose:
+                            sub_case = sub_path2choose.replace(path2choose + ",", "") \
+                                        .split(",")[0]
+                        elif sub_path2choose in path2choose:
+                            case = path2choose.replace(sub_path2choose + ",", "") \
+                                        .split(",")[0]
                         if case == sub_case:
                             raise Exception("\n\nThe following ``_changes`` can be accessed " +
                                          "simultaneously in " + fpath + ":\n" +
@@ -135,6 +161,8 @@ def check_changes_duplicates(yamldict_all, fpath):
                                          "    - " + ".".join(other_changes) + "\n" +
                                          "\n" + changes_note + "\n\n")
                     else:
+                        # If these ``choose_`` are different they can be accessed
+                        # simultaneously, then it returns an error
                         raise Exception ("\n\nThe following ``_changes`` can be accessed " +
                                          "simultaneously in " + fpath + ":\n" +
                                          "    - " + ".".join(changes) + "\n" +
@@ -150,14 +178,21 @@ def check_changes_duplicates(yamldict_all, fpath):
 def find_last_choose(var_path):
     """
     Locates the last ``choose_`` on a string containing the path to a
-    variable separated by ",", and returns the path to the choose (also
-    separated by ",") and the case that follows the ``choose_``.
+    variable separated by ",", and returns the path to the ``choose_`` 
+    (also separated by ",") and the case that follows the ``choose_``.
 
     Parameters
     ----------
     var_path : str
         String containing the path to the last ``choose_`` separated by
         ",".
+
+    Returns
+    -------
+    path2choose : str
+        Path to the last ``choose_``.
+    case : str
+        Case after the choose.
     """
     # Find the last ``choose_``
     last_choose = [x for x in var_path if "choose_" in x][-1]

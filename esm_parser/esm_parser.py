@@ -2137,7 +2137,8 @@ def find_key(d_search, k_search, exc_strings = "", level = "", paths2finds = [],
                 strings_in_key &= False
             # key is neither an integer or a string
             elif not isinstance(key, str) and not isinstance(key, int) and not isinstance(key, float):
-                raise Warning("find_key only supports searches for keys that are string or integers")
+                raise Warning("find_key only supports searches for keys that are string, integers," \
+                              "floats and booleans")
                 strings_in_key &= False
         # Check if the key needs to be excluded
         for estr in exc_strings:
@@ -2151,7 +2152,8 @@ def find_key(d_search, k_search, exc_strings = "", level = "", paths2finds = [],
         # If the key does not meet the criteria, but its value is a dictionary
         # keep searching inside (recursion).
         elif not strings_in_key and isinstance(d_search[key], dict):
-            paths2finds = find_key(d_search[key], k_search, exc_strings, level + str(key) + sep, paths2finds)
+            paths2finds = find_key(d_search[key], k_search, exc_strings, level + str(key) + sep,
+                                   paths2finds, sep)
 
     return paths2finds
 
