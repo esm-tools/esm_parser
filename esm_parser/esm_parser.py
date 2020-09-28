@@ -2158,6 +2158,23 @@ def find_key(d_search, k_search, exc_strings = "", level = "", paths2finds = [],
     return paths2finds
 
 
+def user_error(error_type, error_text):
+    """
+    User-friendly error using ``sys.exit()`` instead of an ``Exception``.
+
+    Parameters
+    ----------
+    error_type : str
+        Error type used for the error heading.
+    text : str
+        Text clarifying the error.
+    """
+    error_title = error_type + " error!"
+    print("\n" + error_title + "\n" + "-" * len(error_title) + "\n")
+    print(error_text)
+    sys.exit()
+
+
 class GeneralConfig(dict):  # pragma: no cover
     """ All configs do this! """
 

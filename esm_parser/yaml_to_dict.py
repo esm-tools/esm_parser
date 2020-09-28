@@ -109,20 +109,22 @@ def check_changes_duplicates(yamldict_all, fpath):
             # If more than one ``_changes`` without ``choose_`` return error
             if len(changes_no_choose) > 1:
                 changes_no_choose = [x.replace(",",".") for x in changes_no_choose]
-                raise Exception("\n\nMore than one ``_changes`` out of a ``choose_``in "
-                                + fpath + ":\n    - " + "\n    - ".join(changes_no_choose) +
-                                "\n" + changes_note + "\n\n")
+                esm_parser.user_error("YAML syntax",
+                            "More than one ``_changes`` out of a ``choose_``in "
+                            + fpath + ":\n    - " + "\n    - ".join(changes_no_choose) +
+                            "\n" + changes_note + "\n\n")
             # If only one ``_changes`` without ``choose_`` check for ``_changes`` inside
             # ``choose_`` and return error if any is found
             elif len(changes_no_choose) == 1:
                 changes_group.remove(changes_no_choose[0])
                 if len(changes_group) > 0:
                     changes_group = [x.replace(",",".") for x in changes_group]
-                    raise Exception("\n\nThe general ``" + changes_no_choose[0] +
-                                    "`` and ``_changes`` in ``choose_`` are not compatible in "
-                                    + fpath + ":\n    - " +
-                                    "\n    - ".join(changes_group) + "\n" +
-                                    "\n" + changes_note + "\n\n")
+                    esm_parser.user_error("YAML syntax",
+                                "The general ``" + changes_no_choose[0] +
+                                "`` and ``_changes`` in ``choose_`` are not compatible in "
+                                + fpath + ":\n    - " +
+                                "\n    - ".join(changes_group) + "\n" +
+                                "\n" + changes_note + "\n\n")
 
             # If you reach this point all ``_changes`` are inside
             # some number of ``choose_`` (there are no ``_changes``
@@ -155,19 +157,21 @@ def check_changes_duplicates(yamldict_all, fpath):
                             case = path2choose.replace(sub_path2choose + ",", "") \
                                         .split(",")[0]
                         if case == sub_case:
-                            raise Exception("\n\nThe following ``_changes`` can be accessed " +
-                                         "simultaneously in " + fpath + ":\n" +
-                                         "    - " + ".".join(changes) + "\n" +
-                                         "    - " + ".".join(other_changes) + "\n" +
-                                         "\n" + changes_note + "\n\n")
+                            esm_parser.user_error("YAML syntax",
+                                        "The following ``_changes`` can be accessed " +
+                                        "simultaneously in " + fpath + ":\n" +
+                                        "    - " + ".".join(changes) + "\n" +
+                                        "    - " + ".".join(other_changes) + "\n" +
+                                        "\n" + changes_note + "\n\n")
                     else:
                         # If these ``choose_`` are different they can be accessed
                         # simultaneously, then it returns an error
-                        raise Exception ("\n\nThe following ``_changes`` can be accessed " +
-                                         "simultaneously in " + fpath + ":\n" +
-                                         "    - " + ".".join(changes) + "\n" +
-                                         "    - " + ".".join(other_changes) + "\n" +
-                                         "\n" + changes_note + "\n\n")
+                        esm_parser.user_error("YAML syntax",
+                                    "\The following ``_changes`` can be accessed " +
+                                    "simultaneously in " + fpath + ":\n" +
+                                    "    - " + ".".join(changes) + "\n" +
+                                    "    - " + ".".join(other_changes) + "\n" +
+                                    "\n" + changes_note + "\n\n")
 
             # Load the yaml file
             with open(fpath) as yaml_file:
@@ -178,7 +182,7 @@ def check_changes_duplicates(yamldict_all, fpath):
 def find_last_choose(var_path):
     """
     Locates the last ``choose_`` on a string containing the path to a
-    variable separated by ",", and returns the path to the ``choose_`` 
+    variable separated by ",", and returns the path to the ``choose_``
     (also separated by ",") and the case that follows the ``choose_``.
 
     Parameters
