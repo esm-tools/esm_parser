@@ -173,11 +173,6 @@ def check_changes_duplicates(yamldict_all, fpath):
                                     "    - " + ".".join(other_changes) + "\n" +
                                     "\n" + changes_note + "\n\n")
 
-            # Load the yaml file
-            with open(fpath) as yaml_file:
-                # Loop through the <variable>_changes found in the dictionary
-                for changes in changes_list:
-                    pass
 
 def find_last_choose(var_path):
     """
