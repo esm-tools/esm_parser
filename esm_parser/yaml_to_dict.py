@@ -237,9 +237,8 @@ def check_duplicates(src):
             value = loader.construct_object(value_node, deep=deep)
 
             if key in mapping:
-                raise yaml.constructor.ConstructorError(
-                    "pping", node.start_mark,
-                    "\n\nKey ``{0}`` is duplicated {1}\n\n"
+                esm_parser.user_error("Duplicated variables",
+                    "Key ``{0}`` is duplicated {1}\n\n"
                     .format(key, str(key_node.start_mark).replace("  ","").split(",")[0]))
 
             mapping[key] = value
