@@ -2184,7 +2184,7 @@ def user_error(error_type, error_text):
     text : str
         Text clarifying the error.
     """
-    error_title = error_type + " error!"
+    error_title = "ERROR: " + error_type
     user_note(error_title, error_text)
     sys.exit()
 
