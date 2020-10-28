@@ -2098,6 +2098,110 @@ def choose_blocks(config, blackdict={}, isblacklist=True):
     remove_entries_from_chapter_in_config(config, all_names, config, all_names)
     gray_list = gray_list_backup.copy()
 
+
+def find_key(d_search, k_search, exc_strings = "", level = "", paths2finds = [], sep = "."):
+    """
+    Searches for a key inside a nested dictionary. It can search for an
+    integer, or a piece of string. A list of strings can be given as an
+    input to search for keys containing all of them. An additional list
+    of strings can be specified for keys containing them be excluded
+    from the findings. This is a recursive function.
+
+    .. Note::
+       Always define paths2finds, to avoid expansion of this list with
+       consecutive calls.
+
+    Parameters
+    ----------
+    d_search : dict
+        The dictionary to be explored recursively.
+    k_search : list, str, int
+        String, integer or list of strings to be search for in ``d_search``.
+    exc_strings : list, str
+        String or list of strings for keys containing them to be excluded
+        from the finds.
+    level : string
+        String specifying the full path to the currently evaluated
+        dictionary. Each dictionary level in these strings is separated
+        by a ``.``.
+    paths2finds : list
+        List of strings specifying the full path to the found keys in
+        ``d_search``. Each dictionary level in these strings is separated
+        by a the specified string in ``sep`` (default is ``"."``).
+    sep : string
+        String separator used in between each path component in
+        ``paths2finds``.
+
+    Return
+    ------
+    paths2finds : list
+        List of strings specifying the full path to the found keys in
+        ``d_search``. Each dictionary level in these strings is separated
+        by a ``.``.
+    """
+    # Transform input to lists
+    if isinstance(k_search, (str, int)):
+        k_search = [k_search]
+    elif not isinstance(k_search, list):
+        raise Exception("k_search is not a string, a list or a list of strings")
+    if isinstance(exc_strings, str):
+        exc_strings = [exc_strings]
+    elif not isinstance(exc_strings, list):
+        raise Exception("exc_strings is not a string, or a list of strings")
+
+    # Loop over the d_search keys
+    for key in d_search.keys():
+        strings_in_key = True
+        # Check if the key meets the specified requirements
+        for istr in k_search:
+            # key is a string but it does not contained the searched string
+            if isinstance(key, str) and isinstance(istr, str) and istr not in key:
+                strings_in_key &= False
+            # key is an integer but is not equal to the searched integer
+            elif isinstance(key, int) and istr is not key:
+                strings_in_key &= False
+            elif isinstance(key, float) and istr is not key:
+                strings_in_key &= False
+            # key is neither an integer or a string
+            elif not isinstance(key, str) and not isinstance(key, int) and not isinstance(key, float):
+                raise Warning("find_key only supports searches for keys that are string, integers," \
+                              "floats and booleans")
+                strings_in_key &= False
+        # Check if the key needs to be excluded
+        for estr in exc_strings:
+            # Nothing to exclude if the key is not a string
+            if isinstance(key, str) and estr in key:
+                strings_in_key &= False
+
+        # If the key meets the criteria, add the path to the paths2finds
+        if strings_in_key:
+            paths2finds.append(level + str(key))
+        # If the key does not meet the criteria, but its value is a dictionary
+        # keep searching inside (recursion).
+        elif not strings_in_key and isinstance(d_search[key], dict):
+            paths2finds = find_key(d_search[key], k_search, exc_strings, level + str(key) + sep,
+                                   paths2finds, sep)
+
+    return paths2finds
+
+
+def user_error(error_type, error_text):
+    """
+    User-friendly error using ``sys.exit()`` instead of an ``Exception``.
+
+    Parameters
+    ----------
+    error_type : str
+        Error type used for the error heading.
+    text : str
+        Text clarifying the error.
+    """
+    error_title = error_type + " error!"
+    print("\n" + error_title + "\n" + "-" * len(error_title) + "\n")
+    print(error_text)
+    sys.exit()
+
+
 class GeneralConfig(dict):  # pragma: no cover
     """ All configs do this! """
 
@@ -2270,6 +2374,10 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
             user_config, setup_config, priority="first"
         )
         self.config = priority_merge_dicts(blackdict, model_config, priority="first")
+
+        if not "coupled_setup" in self.config["general"]:
+            self._blackdict = blackdict = user_config
+
         #pprint_config(self.config)
         #sys.exit(0)
 
