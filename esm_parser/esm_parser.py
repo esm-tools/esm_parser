@@ -2173,7 +2173,7 @@ def user_note(note_heading, note_text):
     print(note_text)
 
 
-def user_error(error_type, error_text):
+def user_error(error_type, error_text, exit_code=1):
     """
     User-friendly error using ``sys.exit()`` instead of an ``Exception``.
 
@@ -2183,10 +2183,12 @@ def user_error(error_type, error_text):
         Error type used for the error heading.
     text : str
         Text clarifying the error.
+    exit_code : int
+        The exit code to send back to the parent process (default to 1)
     """
     error_title = "ERROR: " + error_type
     user_note(error_title, error_text)
-    sys.exit()
+    sys.exit(exit_code)
 
 
 class GeneralConfig(dict):  # pragma: no cover
