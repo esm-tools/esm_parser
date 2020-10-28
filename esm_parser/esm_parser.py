@@ -2158,7 +2158,22 @@ def find_key(d_search, k_search, exc_strings = "", level = "", paths2finds = [],
     return paths2finds
 
 
-def user_error(error_type, error_text):
+def user_note(note_heading, note_text):
+    """
+    Notify the user about something. In the future this should also write in the log.
+
+    Parameters
+    ----------
+    note_heading : str
+        Note type used for the heading.
+    text : str
+        Text clarifying the note.
+    """
+    print("\n" + note_heading + "\n" + "-" * len(note_heading) + "\n")
+    print(note_text)
+
+
+def user_error(error_type, error_text, exit_code=1):
     """
     User-friendly error using ``sys.exit()`` instead of an ``Exception``.
 
@@ -2168,11 +2183,12 @@ def user_error(error_type, error_text):
         Error type used for the error heading.
     text : str
         Text clarifying the error.
+    exit_code : int
+        The exit code to send back to the parent process (default to 1)
     """
-    error_title = error_type + " error!"
-    print("\n" + error_title + "\n" + "-" * len(error_title) + "\n")
-    print(error_text)
-    sys.exit()
+    error_title = "ERROR: " + error_type
+    user_note(error_title, error_text)
+    sys.exit(exit_code)
 
 
 class GeneralConfig(dict):  # pragma: no cover
