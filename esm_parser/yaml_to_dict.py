@@ -44,6 +44,8 @@ def yaml_file_to_dict(filepath):
                 # Check for incompatible ``_changes`` (no more than one ``_changes``
                 # type should be accessible simultaneously)
                 check_changes_duplicates(yaml_load, filepath + extension)
+                # Add the file name you loaded from to track it back:
+                yaml_load["debug_info"] = {"loaded_from_file": yaml_file.name}
                 return yaml_load
         except IOError as error:
             logger.debug(
