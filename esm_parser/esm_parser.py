@@ -2363,6 +2363,10 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
             user_config, setup_config, priority="first"
         )
         self.config = priority_merge_dicts(blackdict, model_config, priority="first")
+
+        if not "coupled_setup" in self.config["general"]:
+            self._blackdict = blackdict = user_config
+
         #pprint_config(self.config)
         #sys.exit(0)
 
