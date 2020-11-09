@@ -87,6 +87,8 @@ from .yaml_to_dict import *
 # Date class
 from esm_calendar import Date
 
+# Loader for package yamls
+import esm_tools
 
 # Logger and related constants
 logger = logging.getLogger("root")
@@ -159,8 +161,16 @@ def look_for_file(model, item):
                 ]:
 
             if os.path.isfile(possible_path + ending):
-                return possible_path + ending
-    return None
+                needs_loading = True
+                return possible_path + ending, needs_loading
+            if (possible_path + ending).startswith("NONE_YET"):
+                try:
+                    config = esm_tools.read_config_file(possible_path.replace("NONE_YET", "") + ending)
+                    needs_loading = False
+                    return config, needs_loading
+                except Exception as e:
+                    continue
+    return None, None
 
 
 
@@ -343,15 +353,17 @@ def attach_to_config_and_reduce_keyword(
                             if "version" in config_to_read_from[item]:
                                 item = model + "-" + config_to_read_from[item]["version"]
 
-                include_path = look_for_file(model, item)
+                include_path, needs_load = look_for_file(model, item)
                 if not include_path:
-                    include_path = look_for_file(model, model)
+                    include_path, needs_load = look_for_file(model, model)
                 if not include_path:
                     print (f'attach_to_config_and_reduce: File {item} of model {model} could not be found. Sorry.')
                     sys.exit(-1)
-
                 logger.debug("Reading %s", include_path)
-                tmp_config = yaml_file_to_dict(include_path)
+                if needs_load:
+                    tmp_config = yaml_file_to_dict(include_path)
+                else:
+                    tmp_config = include_path
 
                 config_to_write_to[tmp_config["model"]] = tmp_config
 
@@ -368,11 +380,14 @@ def attach_to_config_and_reduce_keyword(
 
 
 def attach_single_config(config, path, attach_value):
-    include_path = look_for_file(path, attach_value)
+    include_path, needs_load = look_for_file(path, attach_value)
     if include_path:
-        attachable_config = yaml_file_to_dict(
-                include_path
-        )
+        if needs_load:
+            attachable_config = yaml_file_to_dict(
+                    include_path
+            )
+        else:
+            attachable_config = include_path
     elif os.path.isfile(path + "/" + attach_value):
         attachable_config = yaml_file_to_dict(
             path + "/" + attach_value
@@ -1727,7 +1742,10 @@ def determine_computer_from_hostname():
         A string for the path of the computer specific yaml file.
     """
     # FIXME: This needs to be a resource file at some point
-    all_computers = yaml_file_to_dict(FUNCTION_PATH + "/machines/all_machines.yaml")
+    if FUNCTION_PATH.startswith("NONE_YET"):
+        all_computers = esm_tools.read_config_file("machines/all_machines.yaml")
+    else:
+        all_computers = yaml_file_to_dict(FUNCTION_PATH + "/machines/all_machines.yaml")
     for this_computer in all_computers:
         for computer_pattern in all_computers[this_computer].values():
             if isinstance(computer_pattern, str):
@@ -2233,14 +2251,17 @@ class GeneralConfig(dict):  # pragma: no cover
             config_path = model
         else:
 
-            include_path = look_for_file(model, model + "-" + version)
+            include_path, needs_load = look_for_file(model, model + "-" + version)
             if not include_path:
-                include_path = look_for_file(model, model)
+                include_path, needs_load = look_for_file(model, model)
             if not include_path:
                 print(f"GeneralConfig: Couldn't find file for model {model}")
                 sys.exit(-1)
 
-        self.config = yaml_file_to_dict(include_path)
+        if needs_load:
+            self.config = yaml_file_to_dict(include_path)
+        else:
+            self.config = include_path
         for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
             attach_to_config_and_remove(self.config, attachment)
 
@@ -2268,13 +2289,25 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
             user_config["defaults"] = {}
 
         default_infos = {}
-        for i in os.listdir(DEFAULTS_DIR):
-            file_contents = yaml_file_to_dict(DEFAULTS_DIR + "/" + i)
-            default_infos.update(file_contents)
+        if not DEFAULTS_DIR.startswith("NONE_YET"):
+            for i in os.listdir(DEFAULTS_DIR):
+                file_contents = yaml_file_to_dict(DEFAULTS_DIR + "/" + i)
+                default_infos.update(file_contents)
+        else:
+            for i in esm_tools.list_config_dir(DEFAULTS_DIR.replace("NONE_YET/", "")):
+                file_contents = esm_tools.read_config_file(DEFAULTS_DIR.replace("NONE_YET/", "")+"/"+i)
+                default_infos.update(file_contents)
+
+
         user_config["defaults"].update(default_infos)
 
+        computer_file = determine_computer_from_hostname()
+        if computer_file.startswith("NONE_YET"):
+            computer_config = esm_tools.read_config_file(computer_file.replace("NONE_YET/", ""))
+        else:
+            computer_config = yaml_file_to_dict(computer_config)
         setup_config = {
-            "computer": yaml_file_to_dict(determine_computer_from_hostname()),
+            "computer": computer_config,
             "general": {},
         }
         for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
