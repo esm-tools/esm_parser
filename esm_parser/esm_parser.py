@@ -543,17 +543,21 @@ def remove_entry_from_chapter(
     if model_to_remove_from in model_config:
         for entry in remove_entries:
             try:
-                del model_config[model_to_remove_from][remove_chapter.split(".")[-1]][
-                    entry
-                ]
+                remove_from_config = model_config[model_to_remove_from][remove_chapter.split(".")[-1]]
+                if isinstance(remove_from_config, list):
+                    remove_from_config.remove(entry)
+                else:
+                    del remove_from_config[entry]
             except:
                 pass
     elif model_to_remove_from in setup_config:
         for entry in remove_entries:
             try:
-                del setup_config[model_to_remove_from][remove_chapter.split(".")[-1]][
-                    entry
-                ]
+                remove_from_config =  setup_config[model_to_remove_from][remove_chapter.split(".")[-1]]
+                if isinstance(remove_from_config, list):
+                    remove_from_config.remove(entry)
+                else:
+                    del remove_from_config[entry]
             except:
                 pass
     if model_with_remove_statement in model_config:
@@ -705,9 +709,14 @@ def add_entry_to_chapter(
                 ],
                 list,
             ):
+                mod_list = target_config[model_to_add_to][
+                    add_chapter.split(".")[-1].replace("add_", "")
+                ]
+                mod_list += add_entries
+                # Remove duplicates
                 target_config[model_to_add_to][
                     add_chapter.split(".")[-1].replace("add_", "")
-                ] += add_entries
+                ] = list(dict.fromkeys(mod_list))
                 global list_counter
                 list_counter += 1
             elif isinstance(
@@ -716,9 +725,14 @@ def add_entry_to_chapter(
                 ],
                 dict,
             ):
-                target_config[model_to_add_to][
-                    add_chapter.split(".")[-1].replace("add_", "")
-                ].update(add_entries)
+                dict_merge(
+                    target_config[model_to_add_to][
+                        add_chapter.split(".")[-1].replace("add_", "")
+                    ], add_entries
+                )
+                #target_config[model_to_add_to][
+                #    add_chapter.split(".")[-1].replace("add_", "")
+                #].update(add_entries)
     if list_counter > 1:
         pass
         # pdb.set_trace()
@@ -2143,7 +2157,7 @@ def find_key(d_search, k_search, exc_strings = "", level = "", paths2finds = [],
         # Check if the key needs to be excluded
         for estr in exc_strings:
             # Nothing to exclude if the key is not a string
-            if isinstance(key, str) and estr in key:
+            if isinstance(key, str) and estr in key and len(estr)>0:
                 strings_in_key &= False
 
         # If the key meets the criteria, add the path to the paths2finds
@@ -2359,6 +2373,8 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
         logging.debug("Valid Setup Names = %s", valid_setup_names)
         logging.debug("Valid Model Names = %s", valid_model_names)
 
+        #recursive_run_function([], user_config, "keys", user_add_remove, "user")
+
         self._blackdict = blackdict = priority_merge_dicts(
             user_config, setup_config, priority="first"
         )
@@ -2366,6 +2382,10 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
 
         if not "coupled_setup" in self.config["general"]:
             self._blackdict = blackdict = user_config
+
+        # Remove adds from the blackdict
+        #recursive_run_function([], blackdict, "mappings", rm_add_remove)
+        #self._blackdict = blackdict
 
         #pprint_config(self.config)
         #sys.exit(0)
@@ -2412,3 +2432,47 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
         )
         recursive_run_function([], config, "atomic", purify_booleans, config)
         recursive_run_function([], config, "atomic", perform_actions, config)
+
+
+def user_add_remove(tree, rhs, opt, paths = []):
+    if not tree[-1]:
+        tree = tree[:-1]
+    lhs = tree[-1]
+
+    if opt=="user":
+        if isinstance(lhs, str):
+            if lhs.startswith("add_"):
+                return lhs.replace("add_", "addu_")
+            elif lhs.startswith("remove_"):
+                return lhs.replace("remove_", "removeu_")
+    elif opt=="revert":
+        if isinstance(lhs, str):
+            if lhs.startswith("addu_"):
+                return lhs.replace("addu_", "add_")
+            elif lhs.startswith("removeu_"):
+                return lhs.replace("removeu_", "remove_")
+    elif opt=="get":
+        if isinstance(lhs, str):
+            if lhs.startswith("addu_"):
+                paths.append(tree)
+    return lhs
+
+def user_adds(config, blackdict):
+
+    paths = []
+    recursive_run_function([], config, "keys", user_add_remove, "get", paths)
+    for path in paths:
+        dict2update = config
+        for c, key in enumerate(path):
+            if c==len(path)-1:
+                if isinstance(dict2update[key], dict):
+                    if key.startswith("addu_"):
+                        priority_merge_dicts(dict2update[key], dict2update[key.replace("addu_", "")], priority="first")
+                        del dict2update[key]
+            else:
+                dict2update = dict2update[key]
+
+    recursive_run_function([], config, "keys", user_add_remove, "revert")
+    all_names = list(config)
+    add_entries_to_chapter_in_config(config, all_names, config, all_names)
+    remove_entries_from_chapter_in_config(config, all_names, config, all_names)
