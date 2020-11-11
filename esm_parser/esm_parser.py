@@ -730,9 +730,6 @@ def add_entry_to_chapter(
                         add_chapter.split(".")[-1].replace("add_", "")
                     ], add_entries
                 )
-                #target_config[model_to_add_to][
-                #    add_chapter.split(".")[-1].replace("add_", "")
-                #].update(add_entries)
     if list_counter > 1:
         pass
         # pdb.set_trace()
@@ -2373,8 +2370,6 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
         logging.debug("Valid Setup Names = %s", valid_setup_names)
         logging.debug("Valid Model Names = %s", valid_model_names)
 
-        #recursive_run_function([], user_config, "keys", user_add_remove, "user")
-
         self._blackdict = blackdict = priority_merge_dicts(
             user_config, setup_config, priority="first"
         )
@@ -2382,10 +2377,6 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
 
         if not "coupled_setup" in self.config["general"]:
             self._blackdict = blackdict = user_config
-
-        # Remove adds from the blackdict
-        #recursive_run_function([], blackdict, "mappings", rm_add_remove)
-        #self._blackdict = blackdict
 
         #pprint_config(self.config)
         #sys.exit(0)
