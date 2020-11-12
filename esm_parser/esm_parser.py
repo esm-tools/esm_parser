@@ -500,8 +500,7 @@ def find_remove_entries_in_config(mapping, model_name):
             continue
         for key, value in items:
             if isinstance(key, str) and key.startswith("remove_"):
-                if not "." in key:
-                    key = "remove_" + model_name + "." + key.split("remove_")[-1]
+                key = "remove_" + model_name + "." + key.split("remove_")[-1]
                 all_removes.append((key, value))
             if isinstance(value, dict):
                 mappings.append(value)
@@ -528,6 +527,7 @@ def add_entries_from_chapter(config, add_chapter, add_entries):
             dict_merge(config[add_chapter], add_entries)
     else:
         config[add_chapter] = add_entries
+
 
 def remove_entry_from_chapter(
     remove_chapter,
@@ -565,33 +565,37 @@ def remove_entry_from_chapter(
     # Check that the the user entry is a least, if not rise an exception
     if not isinstance(remove_entries, list):
         raise TypeError("Please put all entries to remove as a list")
-    # Delete the variables specified in the remove_<chapter>, either in model_config or in setup_config
+    # Check for ``namelist_changes`` and change the extension dot ``.`` for a ``,``
+    remove_chapter_nml = remove_chapter
+    if "namelist_changes" in remove_chapter:
+        ind_nc = remove_chapter.find("namelist_changes") + len("namelist_changes") + 1
+        ind_ext_dot = remove_chapter.find(".", ind_nc)
+        if ind_ext_dot > 0:
+            remove_chapter_split = list(remove_chapter)
+            remove_chapter_split[ind_ext_dot] = ","
+            remove_chapter_nml = "".join(remove_chapter_split)
+    # Find the required config
     if model_to_remove_from in model_config:
-        for entry in remove_entries:
-            try:
-                # If remove_from_config is a list use remove method, if it is a dictionary use del.
-                remove_from_config = model_config[model_to_remove_from][
-                    remove_chapter.split(".")[-1]
-                ]
-                if isinstance(remove_from_config, list):
-                    remove_from_config.remove(entry)
-                else:
-                    del remove_from_config[entry]
-            except:
-                pass
+        config = model_config[model_to_remove_from]
     elif model_to_remove_from in setup_config:
-        for entry in remove_entries:
-            try:
-                # If remove_from_config is a list use remove method, if it is a dictionary use del.
-                remove_from_config =  setup_config[model_to_remove_from][
-                    remove_chapter.split(".")[-1]
-                ]
-                if isinstance(remove_from_config, list):
-                    remove_from_config.remove(entry)
-                else:
-                    del remove_from_config[entry]
-            except:
-                pass
+        config = setup_config[model_to_remove_from]
+
+    # Delete the variables specified in the remove_<chapter> in config
+    for entry in remove_entries:
+        try:
+            remove_from_config = config
+            # Find the nested subchapters
+            path2chapter = remove_chapter_nml.split(".")[1:]
+            # Loop through the subchapters to reach the subchapter that to be removed
+            for subchapter in path2chapter:
+                remove_from_config = remove_from_config[subchapter.replace(",", ".")]
+            # If remove_from_config is a list use remove method, if it is a dictionary use del
+            if isinstance(remove_from_config, list):
+                remove_from_config.remove(entry)
+            else:
+                del remove_from_config[entry]
+        except:
+            pass
     # Cleanup the remove_<chapter> command defined by the user either in model_config or in setup_config
     if model_with_remove_statement in model_config:
         try:
