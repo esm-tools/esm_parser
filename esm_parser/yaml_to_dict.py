@@ -92,41 +92,47 @@ def check_changes_duplicates(yamldict_all, fpath):
     fpath : str
         Path to the yaml file
     """
-    changes_note = "Note that if there are more than one ``_changes`` in the " \
-                   "file, they need to be placed inside different cases of the " \
-                   "same ``choose`` and these options need to be compatible " \
-                   "(only one ``_changes`` can be reached at a time).\n" \
-                   "Use ``add_<variable>_changes`` if you want to add/overwrite " \
-                   "variables inside the main ``_changes``."
-    add_note = "Note that multiple ``add_<variable>`` in a single file are compatible " \
-               "as long as they are included inside ``choose_`` blocks. An " \
-               "``add_<variable>`` out of a ``choose_`` block and the same " \
-               "``add_<variable>`` inside of a ``choose_`` block are considered " \
-               "incompatible. If the general ``add_<variable>`` should be added " \
-               "as a default, please include it to ``<variable>`` instead."
+    changes_note = (
+        "Note that if there are more than one ``_changes`` in the "
+        "file, they need to be placed inside different cases of the "
+        "same ``choose`` and these options need to be compatible "
+        "(only one ``_changes`` can be reached at a time).\n"
+        "Use ``add_<variable>_changes`` if you want to add/overwrite "
+        "variables inside the main ``_changes``."
+    )
+    add_note = (
+        "Note that multiple ``add_<variable>`` in a single file are compatible "
+        "as long as they are included inside ``choose_`` blocks. An "
+        "``add_<variable>`` out of a ``choose_`` block and the same "
+        "``add_<variable>`` inside of a ``choose_`` block are considered "
+        "incompatible. If the general ``add_<variable>`` should be added "
+        "as a default, please include it to ``<variable>`` instead."
+    )
     # If it is a couple setup, check for ``_changes`` duplicates separately for each component
     if "general" not in yamldict_all:
         yamldict_all = {"main": yamldict_all}
     # Loop through the components or main
     for yamldict in yamldict_all.values():
         # Check if any <variable>_changes or add_<variable> exists, if not, return
-        changes_list = esm_parser.find_key(yamldict, "_changes", "add_",
-                                           paths2finds = [], sep=",")
-        add_list = esm_parser.find_key(yamldict, ["add_"], "",
-                                           paths2finds = [], sep=",")
+        changes_list = esm_parser.find_key(
+            yamldict, "_changes", "add_",paths2finds = [], sep=","
+        )
+        add_list = esm_parser.find_key(yamldict, ["add_"], "",paths2finds = [], sep=",")
         if (len(changes_list) + len(add_list)) == 0:
             continue
 
         # Find ``_changes`` types
-        changes_types = set([y for x in changes_list for y in x.split(",")
-                             if "_changes" in y])
+        changes_types = set(
+            [y for x in changes_list for y in x.split(",") if "_changes" in y]
+        )
         # Find ``add_`` types
-        add_types = set([y for x in add_list for y in x.split(",")
-                             if "add_" in y])
+        add_types = set([y for x in add_list for y in x.split(",") if "add_" in y])
         # Define ``_changes`` groups
         changes_groups = []
         for change_type in changes_types:
-            changes_groups.append([x for x in changes_list if change_type == x.split(",")[-1]])
+            changes_groups.append(
+                [x for x in changes_list if change_type == x.split(",")[-1]]
+            )
         # Define ``add_`` groups
         add_groups = []
         for add_type in add_types:
@@ -205,20 +211,26 @@ def check_changes_duplicates(yamldict_all, fpath):
 
         # Loop through the different ``add_`` groups
         for add_group in add_groups:
-            # Count ``add_`` occurrences out of a ``choose_`` 
+            # Count ``add_`` occurrences out of a ``choose_``
             add_no_choose = [x for x in add_group if "choose_" not in x]
             # If one ``add_`` without ``choose_`` check for ``add_`` inside
             # ``choose_`` and return error if any is found (incompatible ``add_``s)
             if len(add_no_choose) == 1:
                 add_group.remove(add_no_choose[0])
                 if len(add_group) > 0:
-                    add_group = [x.replace(",",".") for x in add_group]
-                    esm_parser.user_error("YAML syntax",
-                                "The general ``" + add_no_choose[0] +
-                                "`` and ``add_`` in ``choose_`` are not compatible in "
-                                + fpath + ":\n    - " +
-                                "\n    - ".join(add_group) + "\n" +
-                                "\n" + add_note + "\n\n")
+                    add_group = [x.replace(",", ".") for x in add_group]
+                    esm_parser.user_error(
+                        "YAML syntax",
+                        "The general ``"
+                        + add_no_choose[0]
+                        + "`` and ``add_`` in ``choose_`` are not compatible in "
+                        + fpath
+                        + ":\n    - "
+                        + "\n    - ".join(add_group)
+                        + "\n\n"
+                        + add_note
+                        + "\n\n",
+                    )
 
 
 def find_last_choose(var_path):

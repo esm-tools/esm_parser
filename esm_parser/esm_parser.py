@@ -570,7 +570,9 @@ def remove_entry_from_chapter(
         for entry in remove_entries:
             try:
                 # If remove_from_config is a list use remove method, if it is a dictionary use del.
-                remove_from_config = model_config[model_to_remove_from][remove_chapter.split(".")[-1]]
+                remove_from_config = model_config[model_to_remove_from][
+                    remove_chapter.split(".")[-1]
+                ]
                 if isinstance(remove_from_config, list):
                     remove_from_config.remove(entry)
                 else:
@@ -581,7 +583,9 @@ def remove_entry_from_chapter(
         for entry in remove_entries:
             try:
                 # If remove_from_config is a list use remove method, if it is a dictionary use del.
-                remove_from_config =  setup_config[model_to_remove_from][remove_chapter.split(".")[-1]]
+                remove_from_config =  setup_config[model_to_remove_from][
+                    remove_chapter.split(".")[-1]
+                ]
                 if isinstance(remove_from_config, list):
                     remove_from_config.remove(entry)
                 else:
@@ -762,7 +766,8 @@ def add_entry_to_chapter(
                 dict_merge(
                     target_config[model_to_add_to][
                         add_chapter.split(".")[-1].replace("add_", "")
-                    ], add_entries
+                    ],
+                    add_entries,
                 )
     if list_counter > 1:
         pass
