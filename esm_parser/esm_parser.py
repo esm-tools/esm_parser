@@ -537,12 +537,39 @@ def remove_entry_from_chapter(
     model_config,
     setup_config,
 ):
+    """
+    Deletes the entries specified by the user using the ``remove_<chapter>`` command
+    contained in the chapter, that can be either a list or a dictionary. After the
+    removals the ``remove_<chapter>`` command is cleaned up from the config.
+
+    Parameters
+    ----------
+    remove_chapter : str
+        A string specifying the path inside the config to reach the chapter where
+        the entries to be removed are. The string is composed by ``remove_`` followed
+        by the path where each nested chapter is separated by a ``.``.
+    remove_entries : list
+        The list of entries to be remove from the chapter.
+    model_to_remove_from : str
+        Indicates the main chapter inside config where removes need to take place (i.e.
+        ``computer``, ``general``, ``<model>``, ...).
+    model_with_remove_statement : str
+        Indicates the main chapter where the remove command is defined.
+    model_config : dict
+        Component-specific general configuration.
+    setup_config : dict
+        Setup-specific general configuration.
+    """
+
     logging.debug("%s, %s", remove_entries, remove_chapter)
+    # Check that the the user entry is a least, if not rise an exception
     if not isinstance(remove_entries, list):
         raise TypeError("Please put all entries to remove as a list")
+    # Delete the variables specified in the remove_<chapter>, either in model_config or in setup_config
     if model_to_remove_from in model_config:
         for entry in remove_entries:
             try:
+                # If remove_from_config is a list use remove method, if it is a dictionary use del.
                 remove_from_config = model_config[model_to_remove_from][remove_chapter.split(".")[-1]]
                 if isinstance(remove_from_config, list):
                     remove_from_config.remove(entry)
@@ -553,6 +580,7 @@ def remove_entry_from_chapter(
     elif model_to_remove_from in setup_config:
         for entry in remove_entries:
             try:
+                # If remove_from_config is a list use remove method, if it is a dictionary use del.
                 remove_from_config =  setup_config[model_to_remove_from][remove_chapter.split(".")[-1]]
                 if isinstance(remove_from_config, list):
                     remove_from_config.remove(entry)
@@ -560,6 +588,7 @@ def remove_entry_from_chapter(
                     del remove_from_config[entry]
             except:
                 pass
+    # Cleanup the remove_<chapter> command defined by the user either in model_config or in setup_config
     if model_with_remove_statement in model_config:
         try:
             del model_config[model_with_remove_statement][
@@ -709,9 +738,11 @@ def add_entry_to_chapter(
                 ],
                 list,
             ):
+                # Define the list to be modified
                 mod_list = target_config[model_to_add_to][
                     add_chapter.split(".")[-1].replace("add_", "")
                 ]
+                # Add the entries
                 mod_list += add_entries
                 # Remove duplicates
                 target_config[model_to_add_to][
@@ -725,6 +756,9 @@ def add_entry_to_chapter(
                 ],
                 dict,
             ):
+                # If the chapter is a dictionary use dict_merge where the new entries
+                # have priority over the preexisting ones (user choices win over
+                # anything else)
                 dict_merge(
                     target_config[model_to_add_to][
                         add_chapter.split(".")[-1].replace("add_", "")
@@ -2103,7 +2137,7 @@ def find_key(d_search, k_search, exc_strings = "", level = "", paths2finds = [],
         String, integer or list of strings to be search for in ``d_search``.
     exc_strings : list, str
         String or list of strings for keys containing them to be excluded
-        from the finds.
+        from the finds. When set to an empty string, nothing is excluded.
     level : string
         String specifying the full path to the currently evaluated
         dictionary. Each dictionary level in these strings is separated
@@ -2153,7 +2187,7 @@ def find_key(d_search, k_search, exc_strings = "", level = "", paths2finds = [],
                 strings_in_key &= False
         # Check if the key needs to be excluded
         for estr in exc_strings:
-            # Nothing to exclude if the key is not a string
+            # Nothing to exclude if the key is not a string or estr is empty
             if isinstance(key, str) and estr in key and len(estr)>0:
                 strings_in_key &= False
 
