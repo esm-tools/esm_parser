@@ -489,7 +489,7 @@ def deep_update(chapter, entries, config, blackdict={}):
             dict_merge(config, {chapter: entries})
 
 
-def find_remove_entries_in_config(mapping, model_name):
+def find_remove_entries_in_config(mapping, model_name, models = []):
     all_removes = []
     mappings = [mapping]
     while mappings:
@@ -500,7 +500,9 @@ def find_remove_entries_in_config(mapping, model_name):
             continue
         for key, value in items:
             if isinstance(key, str) and key.startswith("remove_"):
-                key = "remove_" + model_name + "." + key.split("remove_")[-1]
+                # If the model is not present in the path add it
+                if key.split("remove_")[-1].split(".")[0] not in models:
+                    key = "remove_" + model_name + "." + key.split("remove_")[-1]
                 all_removes.append((key, value))
             if isinstance(value, dict):
                 mappings.append(value)
@@ -619,7 +621,7 @@ def remove_entries_from_chapter_in_config(
     config = model_config
     for model in valid_model_names:
         logging.debug(model)
-        all_removes_for_model = find_remove_entries_in_config(config[model], model)
+        all_removes_for_model = find_remove_entries_in_config(config[model], model, config.keys())
         for remove_chapter, remove_entries in all_removes_for_model:
             model_to_remove_from = remove_chapter.split(".")[0].replace("remove_", "")
             remove_entry_from_chapter(
