@@ -585,12 +585,13 @@ def remove_entry_from_chapter(
     # Delete the variables specified in the remove_<chapter> in config
     for entry in remove_entries:
         try:
-            remove_from_config = config
-            # Find the nested subchapters
-            path2chapter = remove_chapter_nml.split(".")[1:]
-            # Loop through the subchapters to reach the subchapter that to be removed
-            for subchapter in path2chapter:
-                remove_from_config = remove_from_config[subchapter.replace(",", ".")]
+            # Find the nested subchapter and substitute "," with "." for namelist extensions
+            path2chapter = [
+                subchapter.replace(",", ".")
+                for subchapter in remove_chapter_nml.split(".")[1:]
+            ]
+            # Reach the subchapter that to be removed
+            remove_from_config = recursive_get(config, path2chapter)
             # If remove_from_config is a list use remove method, if it is a dictionary use del
             if isinstance(remove_from_config, list):
                 remove_from_config.remove(entry)
