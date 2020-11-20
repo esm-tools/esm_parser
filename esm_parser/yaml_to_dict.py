@@ -1,8 +1,7 @@
-import yaml
-import logging
+import sys
 
-logger = logging.getLogger("root")
-DEBUG_MODE = logger.level == logging.DEBUG
+import yaml
+from loguru import logger
 
 YAML_AUTO_EXTENSIONS = ["", ".yml", ".yaml", ".YML", ".YAML"]
 
@@ -38,9 +37,11 @@ class EsmConfigFileError(Exception):
             print("\n\n\n" + yaml_error)
         else:
             # If tabs are found print the report
-            self.message = "\n\n\n" \
-                           f"Your file {fpath} has tabs, please use ONLY spaces!\n" \
-                            "Tabs are in following lines:\n" + report
+            self.message = (
+                "\n\n\n"
+                f"Your file {fpath} has tabs, please use ONLY spaces!\n"
+                "Tabs are in following lines:\n" + report
+            )
         super().__init__(self.message)
 
 
@@ -79,10 +80,15 @@ def yaml_file_to_dict(filepath):
                 filepath + extension,
             )
         except yaml.scanner.ScannerError as yaml_error:
-            logger.debug("Your file %s has syntax issues!",
-                filepath + extension,
+            logger.debug(
+                "Your file %s has syntax issues!", filepath + extension,
             )
             raise EsmConfigFileError(filepath + extension, yaml_error)
+        except Exception as error:
+            print("Something else went wrong")
+            print(f"Serious issue with {filepath}, goodbye...")
+            logger.exception(error)
+            sys.exit()
     raise FileNotFoundError(
         "All file extensions tried and none worked for %s" % filepath
     )
