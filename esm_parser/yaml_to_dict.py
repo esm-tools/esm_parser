@@ -1,11 +1,50 @@
+import sys
+
 import yaml
-import logging
+from loguru import logger
+
 import esm_parser
 
-logger = logging.getLogger("root")
-DEBUG_MODE = logger.level == logging.DEBUG
-
 YAML_AUTO_EXTENSIONS = ["", ".yml", ".yaml", ".YML", ".YAML"]
+
+
+class EsmConfigFileError(Exception):
+    """
+    Exception for yaml file containing tabs or other syntax issues.
+
+    An exception used when yaml.load() throws a yaml.scanner.ScannerError.
+    This error occurs mainly when there are tabs inside a yaml file or
+    when the syntax is incorrect. If tabs are found, this exception returns
+    a user-friendly message indicating where the tabs are located in the
+    yaml file.
+
+    Parameters
+    ----------
+    fpath : str
+        Path to the yaml file
+    """
+
+    def __init__(self, fpath, yaml_error):
+        report = ""
+        # Loop through the lines inside the yaml file searching for tabs
+        with open(fpath) as yaml_file:
+            for n, line in enumerate(yaml_file):
+                # Save lines and line numbers with tabs
+                if "\t" in line:
+                    report += str(n) + ":" + line.replace("\t", "____") + "\n"
+
+        # Message to return
+        if len(report) == 0:
+            # If no tabs are found print the original error message
+            print("\n\n\n" + yaml_error)
+        else:
+            # If tabs are found print the report
+            self.message = (
+                "\n\n\n"
+                f"Your file {fpath} has tabs, please use ONLY spaces!\n"
+                "Tabs are in following lines:\n" + report
+            )
+        super().__init__(self.message)
 
 
 def yaml_file_to_dict(filepath):
@@ -54,10 +93,15 @@ def yaml_file_to_dict(filepath):
                 filepath + extension,
             )
         except yaml.scanner.ScannerError as yaml_error:
-            logger.debug("Your file %s has syntax issues!",
-                filepath + extension,
+            logger.debug(
+                "Your file %s has syntax issues!", filepath + extension,
             )
             raise EsmConfigFileError(filepath + extension, yaml_error)
+        except Exception as error:
+            print("Something else went wrong")
+            print(f"Serious issue with {filepath}, goodbye...")
+            logger.exception(error)
+            sys.exit()
     raise FileNotFoundError(
         "All file extensions tried and none worked for %s" % filepath
     )
