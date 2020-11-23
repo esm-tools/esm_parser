@@ -531,7 +531,7 @@ def deep_update(chapter, entries, config, blackdict={}):
             dict_merge(config, {chapter: entries})
 
 
-def find_remove_entries_in_config(mapping, model_name):
+def find_remove_entries_in_config(mapping, model_name, models = []):
     all_removes = []
     mappings = [mapping]
     while mappings:
@@ -542,7 +542,8 @@ def find_remove_entries_in_config(mapping, model_name):
             continue
         for key, value in items:
             if isinstance(key, str) and key.startswith("remove_"):
-                if not "." in key:
+                # If the model is not present in the path add it
+                if key.split("remove_")[-1].split(".")[0] not in models:
                     key = "remove_" + model_name + "." + key.split("remove_")[-1]
                 all_removes.append((key, value))
             if isinstance(value, dict):
@@ -571,6 +572,7 @@ def add_entries_from_chapter(config, add_chapter, add_entries):
     else:
         config[add_chapter] = add_entries
 
+
 def remove_entry_from_chapter(
     remove_chapter,
     remove_entries,
@@ -579,25 +581,67 @@ def remove_entry_from_chapter(
     model_config,
     setup_config,
 ):
+    """
+    Deletes the entries specified by the user using the ``remove_<chapter>`` command
+    contained in the chapter, that can be either a list or a dictionary. After the
+    removals the ``remove_<chapter>`` command is cleaned up from the config.
+
+    Parameters
+    ----------
+    remove_chapter : str
+        A string specifying the path inside the config to reach the chapter where
+        the entries to be removed are. The string is composed by ``remove_`` followed
+        by the path where each nested chapter is separated by a ``.``.
+    remove_entries : list
+        The list of entries to be remove from the chapter.
+    model_to_remove_from : str
+        Indicates the main chapter inside config where removes need to take place (i.e.
+        ``computer``, ``general``, ``<model>``, ...).
+    model_with_remove_statement : str
+        Indicates the main chapter where the remove command is defined.
+    model_config : dict
+        Component-specific general configuration.
+    setup_config : dict
+        Setup-specific general configuration.
+    """
+
     logging.debug("%s, %s", remove_entries, remove_chapter)
+    # Check that the the user entry is a least, if not rise an exception
     if not isinstance(remove_entries, list):
         raise TypeError("Please put all entries to remove as a list")
+    # Check for ``namelist_changes`` and change the extension dot ``.`` for a ``,``
+    remove_chapter_nml = remove_chapter
+    if "namelist_changes" in remove_chapter:
+        ind_nc = remove_chapter.find("namelist_changes") + len("namelist_changes") + 1
+        ind_ext_dot = remove_chapter.find(".", ind_nc)
+        if ind_ext_dot > 0:
+            remove_chapter_split = list(remove_chapter)
+            remove_chapter_split[ind_ext_dot] = ","
+            remove_chapter_nml = "".join(remove_chapter_split)
+    # Find the required config
     if model_to_remove_from in model_config:
-        for entry in remove_entries:
-            try:
-                del model_config[model_to_remove_from][remove_chapter.split(".")[-1]][
-                    entry
-                ]
-            except:
-                pass
+        config = model_config[model_to_remove_from]
     elif model_to_remove_from in setup_config:
-        for entry in remove_entries:
-            try:
-                del setup_config[model_to_remove_from][remove_chapter.split(".")[-1]][
-                    entry
-                ]
-            except:
-                pass
+        config = setup_config[model_to_remove_from]
+
+    # Delete the variables specified in the remove_<chapter> in config
+    for entry in remove_entries:
+        try:
+            # Find the nested subchapter and substitute "," with "." for namelist extensions
+            path2chapter = [
+                subchapter.replace(",", ".")
+                for subchapter in remove_chapter_nml.split(".")[1:]
+            ]
+            # Reach the subchapter that to be removed
+            remove_from_config = recursive_get(config, path2chapter)
+            # If remove_from_config is a list use remove method, if it is a dictionary use del
+            if isinstance(remove_from_config, list):
+                remove_from_config.remove(entry)
+            else:
+                del remove_from_config[entry]
+        except:
+            pass
+    # Cleanup the remove_<chapter> command defined by the user either in model_config or in setup_config
     if model_with_remove_statement in model_config:
         try:
             del model_config[model_with_remove_statement][
@@ -620,7 +664,7 @@ def remove_entries_from_chapter_in_config(
     config = model_config
     for model in valid_model_names:
         logging.debug(model)
-        all_removes_for_model = find_remove_entries_in_config(config[model], model)
+        all_removes_for_model = find_remove_entries_in_config(config[model], model, config.keys())
         for remove_chapter, remove_entries in all_removes_for_model:
             model_to_remove_from = remove_chapter.split(".")[0].replace("remove_", "")
             remove_entry_from_chapter(
@@ -747,9 +791,16 @@ def add_entry_to_chapter(
                 ],
                 list,
             ):
+                # Define the list to be modified
+                mod_list = target_config[model_to_add_to][
+                    add_chapter.split(".")[-1].replace("add_", "")
+                ]
+                # Add the entries
+                mod_list += add_entries
+                # Remove duplicates
                 target_config[model_to_add_to][
                     add_chapter.split(".")[-1].replace("add_", "")
-                ] += add_entries
+                ] = list(dict.fromkeys(mod_list))
                 global list_counter
                 list_counter += 1
             elif isinstance(
@@ -758,9 +809,15 @@ def add_entry_to_chapter(
                 ],
                 dict,
             ):
-                target_config[model_to_add_to][
-                    add_chapter.split(".")[-1].replace("add_", "")
-                ].update(add_entries)
+                # If the chapter is a dictionary use dict_merge where the new entries
+                # have priority over the preexisting ones (user choices win over
+                # anything else)
+                dict_merge(
+                    target_config[model_to_add_to][
+                        add_chapter.split(".")[-1].replace("add_", "")
+                    ],
+                    add_entries,
+                )
     if list_counter > 1:
         pass
         # pdb.set_trace()
@@ -2137,7 +2194,7 @@ def find_key(d_search, k_search, exc_strings = "", level = "", paths2finds = [],
         String, integer or list of strings to be search for in ``d_search``.
     exc_strings : list, str
         String or list of strings for keys containing them to be excluded
-        from the finds.
+        from the finds. When set to an empty string, nothing is excluded.
     level : string
         String specifying the full path to the currently evaluated
         dictionary. Each dictionary level in these strings is separated
@@ -2187,8 +2244,8 @@ def find_key(d_search, k_search, exc_strings = "", level = "", paths2finds = [],
                 strings_in_key &= False
         # Check if the key needs to be excluded
         for estr in exc_strings:
-            # Nothing to exclude if the key is not a string
-            if isinstance(key, str) and estr in key:
+            # Nothing to exclude if the key is not a string or estr is empty
+            if isinstance(key, str) and estr in key and len(estr)>0:
                 strings_in_key &= False
 
         # If the key meets the criteria, add the path to the paths2finds
