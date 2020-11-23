@@ -2305,7 +2305,7 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
         if computer_file.startswith("NONE_YET"):
             computer_config = esm_tools.read_config_file(computer_file.replace("NONE_YET/", ""))
         else:
-            computer_config = yaml_file_to_dict(computer_config)
+            computer_config = yaml_file_to_dict(computer_file)
         setup_config = {
             "computer": computer_config,
             "general": {},
