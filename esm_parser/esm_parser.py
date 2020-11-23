@@ -468,6 +468,56 @@ def priority_merge_dicts(first_config, second_config, priority="first"):
     dict_merge(merged_dictionary, to_merge)
     return merged_dictionary
 
+# NEW STUFF ALREADY, SHALL REPLACE OLD STUFF:
+
+
+def resolve_remove_and_add(workdict):
+    for chapter in workdict:
+        if "remove_" in chapter:
+            remove_chapter = chapter.replace("remove_", "")
+            remove_entries_from_chapter(workdict, remove_chapter, entries)
+            #del config[chapter]
+
+        elif "add_" in chapter:
+            add_chapter = chapter.replace("add_", "")
+            add_entries_from_chapter(workdict, add_chapter, entries)
+            #del config[chapter]
+    return workdict
+
+
+def new_dict_merge(dct, merge_dct, winner="to_be_included"):
+    """ Recursive dict merge. Inspired by :meth:``dict.update()``, instead of
+    updating only top-level keys, dict_merge recurses down into dicts nested
+    to an arbitrary depth, updating keys. The ``merge_dct`` is merged into
+    ``dct``.
+    :param dct: dict onto which the merge is executed
+    :param merge_dct: dct merged into dct
+    :param winner: should be either receiving (default) or to_be_included
+    :return: None
+    """
+    for k, v in six.iteritems(merge_dct):
+        if (
+            k in dct
+            and isinstance(dct[k], dict)
+            and isinstance(merge_dct[k], collections.Mapping)
+        ):
+            new_dict_merge(dct[k], merge_dct[k], winner)
+        else:
+            if not (winner == "receiving" and k in dct):
+                dct[k] = merge_dct[k]
+
+
+def new_deep_update(receiving_dict, dict_to_be_included, winner = "receiving", blackdict = {}):
+    dict_to_be_included = resolve_remove_and_add(dict_to_be_included)
+    for chapter in dict_to_be_included:
+        if chapter not in blackdict:
+            new_dict_merge(receiving_dict, {chapter: dict_to_be_included[chapter]}, winner = winner)
+    return receiving_dict
+
+# END NEW STUFF
+
+
+
 
 def dict_merge(dct, merge_dct):
     """ Recursive dict merge. Inspired by :meth:``dict.update()``, instead of
