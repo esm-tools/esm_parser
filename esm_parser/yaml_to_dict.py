@@ -154,18 +154,22 @@ def check_changes_duplicates(yamldict_all, fpath):
         "incompatible. If the general ``add_<variable>`` should be added "
         "as a default, please include it to ``<variable>`` instead."
     )
+
     # If it is a couple setup, check for ``_changes`` duplicates separately for each component
     if "general" not in yamldict_all:
         yamldict_all = {"main": yamldict_all}
+    
     # Loop through the components or main
     for yamldict in yamldict_all.values():
         # Check if any <variable>_changes or add_<variable> exists, if not, return
-        changes_list = esm_parser.find_key(
-            yamldict, "_changes", "add_",paths2finds = [], sep=","
-        )
-        add_list = esm_parser.find_key(yamldict, ["add_"], "",paths2finds = [], sep=",")
-        if (len(changes_list) + len(add_list)) == 0:
-            continue
+        # Perform the check only for the dictionary objects
+        if isinstance(yamldict, dict):
+            changes_list = esm_parser.find_key(
+                yamldict, "_changes", "add_",paths2finds = [], sep=","
+            )
+            add_list = esm_parser.find_key(yamldict, ["add_"], "",paths2finds = [], sep=",")
+            if (len(changes_list) + len(add_list)) == 0:
+                continue
 
         # Find ``_changes`` types
         changes_types = set(
