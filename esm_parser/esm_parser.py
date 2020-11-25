@@ -2503,9 +2503,27 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
         if "models" in setup_config["general"]:
             for model in setup_config["general"]["models"]:
                 if model in model_config:
+                    # Miguel: the following lines are kind of insane, sorry!
+                    # Needed for being able to use ``include_models`` from a choose
+                    # inside a component (i.e. include xios from oifs yaml in a choose)
+                    model_config_choose_include_models = copy.deepcopy(model_config)
+                    choose_with_include_models = find_key(model_config_choose_include_models[model], "include_models", paths2finds = [])
+                    if choose_with_include_models:
+                        choose_with_include_models = choose_with_include_models[0].split(".")[0]
+                        if choose_with_include_models.replace("choose_", "") in setup_config[model]:
+                            config_to_search_into = setup_config[model]
+                        elif choose_with_include_models.replace("choose_", "") in user_config[model]:
+                            config_to_search_into = user_config[model]
+                        else:
+                            config_to_search_into = model_config[model]
+                        resolve_basic_choose(config_to_search_into, model_config_choose_include_models[model], choose_with_include_models)
                     attach_to_config_and_reduce_keyword(
-                        model_config[model], model_config, "include_models", "models"
+                        model_config_choose_include_models[model], model_config, "include_models", "models"
                     )
+                    # Miguel: madness finishes here. The following lines were are the original:
+                    #attach_to_config_and_reduce_keyword(
+                    #    model_config[model], model_config, "include_models", "models"
+                    #)
             for model in list(model_config):
                 for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
                     attach_to_config_and_remove(model_config[model], attachment)
