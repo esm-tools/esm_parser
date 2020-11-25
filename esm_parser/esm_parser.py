@@ -2510,10 +2510,10 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
                     choose_with_include_models = find_key(model_config_choose_include_models[model], "include_models", paths2finds = [])
                     if choose_with_include_models:
                         choose_with_include_models = choose_with_include_models[0].split(".")[0]
-                        if choose_with_include_models.replace("choose_", "") in setup_config[model]:
-                            config_to_search_into = setup_config[model]
-                        elif choose_with_include_models.replace("choose_", "") in user_config[model]:
+                        if choose_with_include_models.replace("choose_", "") in user_config[model]:
                             config_to_search_into = user_config[model]
+                        elif choose_with_include_models.replace("choose_", "") in setup_config[model]:
+                            config_to_search_into = setup_config[model]
                         else:
                             config_to_search_into = model_config[model]
                         resolve_basic_choose(config_to_search_into, model_config_choose_include_models[model], choose_with_include_models)
