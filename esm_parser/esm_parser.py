@@ -1283,11 +1283,13 @@ def resolve_choose_with_var(var, config, user_config = {}, model_config = {}, se
     # Needed for being able to use ``include_models`` from a choose
     # inside a component (i.e. include xios from oifs yaml in a choose)
     #config_choose_include_models = copy.deepcopy(self.config)
-    # Find the path to the choose that includes the path
+    # Find the path to the variable ``var`` in the given ``config``
     choose_with_var = find_key(config, var, paths2finds = [])
+    # If the path is found and ``var`` is in a ``choose_`` block
     if choose_with_var and "choose_" in choose_with_var:
+        # If ``var`` is in multiple ``choose_`` blocks return an error
         if len(choose_with_var) > 1:
-            if choose_with_var[0] is not choose_with_var[1] or len(choose_with_var) > 22:
+            if choose_with_var[0] is not choose_with_var[1] or len(choose_with_var) > 2:
                 print("include_models in more than one choose_ block!")
                 sys.exit(-1)
         choose_with_var = choose_with_var[0].split(".")[0]
