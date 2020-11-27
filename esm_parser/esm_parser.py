@@ -1275,6 +1275,34 @@ def resolve_choose(model_with_choose, choose_key, config):
         logging.debug("key=%s", key)
 
 
+def resolve_choose_with_var(var, config, user_config = {}, model_config = {}, setup_config = {}):
+    # Miguel: the following lines are kind of insane, sorry!
+    # Needed for being able to use ``include_models`` from a choose
+    # inside a component (i.e. include xios from oifs yaml in a choose)
+    #config_choose_include_models = copy.deepcopy(self.config)
+    choose_with_var = find_key(config, var, paths2finds = [])
+    if choose_with_var:
+        if len(choose_with_var) > 1:
+            print("include_models in more than one choose_ block!")
+            sys.exit(-1)
+        choose_with_var = choose_with_var[0].split(".")[0]
+        choose_key = choose_with_var.replace("choose_", "")
+        current_model = config.get("model")
+        config_to_search_into = None
+        if choose_key in user_config.get(current_model, []):
+            config_to_search_into = user_config.get(current_model)
+        elif choose_key in model_config.get(current_model, []):
+            config_to_search_into = model_config.get(current_model)
+        elif choose_key in setup_config.get(current_model, []):
+            config_to_search_into = setup_config.get(current_model)
+        if config_to_search_into:
+            config_copy = copy.deepcopy(config)
+            resolve_basic_choose(config_to_search_into, config_copy, choose_with_var)
+            if config_copy.get(var):
+                config[var] = config_copy.get(var)
+    # Miguel: madness finishes here.
+
+
 def basic_add_more_important_tasks(choose_keyword, all_set_variables, task_list):
     """
     Determines dependencies of a choose keyword.
@@ -2449,6 +2477,9 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
             setup_config["general"].update({"standalone": True})
             setup_config["general"].update({"models": [self.config["model"]]})
 
+            # Resolve choose with include_models (Miguel)
+            resolve_choose_with_var("include_models", self.config, user_config = user_config, setup_config = setup_config)
+
             if "include_models" in self.config:
                 setup_config["general"]["include_models"] = self.config[
                     "include_models"
@@ -2503,27 +2534,11 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
         if "models" in setup_config["general"]:
             for model in setup_config["general"]["models"]:
                 if model in model_config:
-                    # Miguel: the following lines are kind of insane, sorry!
-                    # Needed for being able to use ``include_models`` from a choose
-                    # inside a component (i.e. include xios from oifs yaml in a choose)
-                    model_config_choose_include_models = copy.deepcopy(model_config)
-                    choose_with_include_models = find_key(model_config_choose_include_models[model], "include_models", paths2finds = [])
-                    if choose_with_include_models:
-                        choose_with_include_models = choose_with_include_models[0].split(".")[0]
-                        if choose_with_include_models.replace("choose_", "") in user_config[model]:
-                            config_to_search_into = user_config[model]
-                        elif choose_with_include_models.replace("choose_", "") in setup_config[model]:
-                            config_to_search_into = setup_config[model]
-                        else:
-                            config_to_search_into = model_config[model]
-                        resolve_basic_choose(config_to_search_into, model_config_choose_include_models[model], choose_with_include_models)
+                    # Resolve choose with include_models (Miguel)
+                    resolve_choose_with_var("include_models", model_config.get(model), user_config = user_config, model_config = model_config, setup_config = setup_config)
                     attach_to_config_and_reduce_keyword(
-                        model_config_choose_include_models[model], model_config, "include_models", "models"
+                        model_config[model], model_config, "include_models", "models"
                     )
-                    # Miguel: madness finishes here. The following lines were are the original:
-                    #attach_to_config_and_reduce_keyword(
-                    #    model_config[model], model_config, "include_models", "models"
-                    #)
             for model in list(model_config):
                 for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
                     attach_to_config_and_remove(model_config[model], attachment)
