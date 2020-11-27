@@ -1275,26 +1275,50 @@ def resolve_choose(model_with_choose, choose_key, config):
         logging.debug("key=%s", key)
 
 
-def resolve_choose_with_var(var, config, user_config = {}, model_config = {}, setup_config = {}):
+def resolve_choose_with_var(
+    var, config, user_config={}, model_config={}, setup_config={}
+):
     """
-    Searches for a ``choose_`` block in which a var is defined in one or 
+    Searches for a ``choose_`` block inside a model configuration ``config``, in which
+    ``var`` is defined, and then resolves ONLY the ``var`` (the other variables in the
+    ``choose_`` remain untouched). Needed, for example, for being able to use
+    ``include_models`` from a ``choose_`` before the general choose-resolve takes place
+    (i.e. include ``xios`` component from ``oifs.yaml`` using a ``choose_``).
+
+    Parameters
+    ----------
+    var : str
+        Name of the variable to be searched inside ``choose_`` blocks.
+    config : dict
+        Model configuration to be changed if the ``var`` is resolved by the ``choose_``.
+    user_config : dict
+        User configuration, used to search for the selected case of the ``choose_``.
+    model_config : dict
+        Component configuration, used to search for the selected case of the
+        ``choose_``.
+    setup_config : dict
+        Setup configuration, used to search for the selected case of the ``choose_``.
     """
-    # Miguel: the following lines are kind of insane, sorry!
-    # Needed for being able to use ``include_models`` from a choose
-    # inside a component (i.e. include xios from oifs yaml in a choose)
-    #config_choose_include_models = copy.deepcopy(self.config)
-    # Find the path to the variable ``var`` in the given ``config``
-    choose_with_var = find_key(config, var, paths2finds = [])
-    # If the path is found and ``var`` is in a ``choose_`` block
-    if choose_with_var and "choose_" in choose_with_var:
+
+    # Find the path to the variable ``var`` in the given ``config``, inside a
+    # ``choose_``
+    choose_with_var = find_key(config, var, paths2finds=[])
+    choose_with_var = [x for x in choose_with_var if "choose_" in x]
+    # If the path is found
+    if choose_with_var:
         # If ``var`` is in multiple ``choose_`` blocks return an error
         if len(choose_with_var) > 1:
             if choose_with_var[0] is not choose_with_var[1] or len(choose_with_var) > 2:
                 print("include_models in more than one choose_ block!")
                 sys.exit(-1)
+        # Get the first part of the path to the ``var``
         choose_with_var = choose_with_var[0].split(".")[0]
+        # Get the key for the ``choose_``
         choose_key = choose_with_var.replace("choose_", "")
+        # Name of the evaluated model
         current_model = config.get("model")
+        # Find where the case for the ``choose_`` is defined, with priority: user ->
+        # setup -> model
         config_to_search_into = None
         if choose_key in user_config.get(current_model, []):
             config_to_search_into = user_config.get(current_model)
@@ -1302,12 +1326,17 @@ def resolve_choose_with_var(var, config, user_config = {}, model_config = {}, se
             config_to_search_into = model_config.get(current_model)
         elif choose_key in setup_config.get(current_model, []):
             config_to_search_into = setup_config.get(current_model)
+        # If the case was found
         if config_to_search_into:
+            # Deep copy here avoids the other variables in the case to be updated now.
+            # We want to update now ONLY the ``var``.
             config_copy = copy.deepcopy(config)
+            # Resolve the case
             resolve_basic_choose(config_to_search_into, config_copy, choose_with_var)
+            # If ``var`` was defined through the resolution of the ``choose_``, add the
+            # ``var`` value to the ``config``.
             if config_copy.get(var):
                 config[var] = config_copy.get(var)
-    # Miguel: madness finishes here.
 
 
 def basic_add_more_important_tasks(choose_keyword, all_set_variables, task_list):
@@ -2485,7 +2514,12 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
             setup_config["general"].update({"models": [self.config["model"]]})
 
             # Resolve choose with include_models (Miguel)
-            resolve_choose_with_var("include_models", self.config, user_config = user_config, setup_config = setup_config)
+            resolve_choose_with_var(
+                "include_models",
+                self.config,
+                user_config=user_config,
+                setup_config=setup_config,
+            )
 
             if "include_models" in self.config:
                 setup_config["general"]["include_models"] = self.config[
@@ -2542,7 +2576,13 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
             for model in setup_config["general"]["models"]:
                 if model in model_config:
                     # Resolve choose with include_models (Miguel)
-                    resolve_choose_with_var("include_models", model_config.get(model), user_config = user_config, model_config = model_config, setup_config = setup_config)
+                    resolve_choose_with_var(
+                        "include_models",
+                        model_config.get(model),
+                        user_config=user_config,
+                        model_config=model_config,
+                        setup_config=setup_config,
+                    )
                     attach_to_config_and_reduce_keyword(
                         model_config[model], model_config, "include_models", "models"
                     )
