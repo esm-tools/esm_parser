@@ -1276,15 +1276,20 @@ def resolve_choose(model_with_choose, choose_key, config):
 
 
 def resolve_choose_with_var(var, config, user_config = {}, model_config = {}, setup_config = {}):
+    """
+    Searches for a ``choose_`` block in which a var is defined in one or 
+    """
     # Miguel: the following lines are kind of insane, sorry!
     # Needed for being able to use ``include_models`` from a choose
     # inside a component (i.e. include xios from oifs yaml in a choose)
     #config_choose_include_models = copy.deepcopy(self.config)
+    # Find the path to the choose that includes the path
     choose_with_var = find_key(config, var, paths2finds = [])
-    if choose_with_var:
+    if choose_with_var and "choose_" in choose_with_var:
         if len(choose_with_var) > 1:
-            print("include_models in more than one choose_ block!")
-            sys.exit(-1)
+            if choose_with_var[0] is not choose_with_var[1] or len(choose_with_var) > 22:
+                print("include_models in more than one choose_ block!")
+                sys.exit(-1)
         choose_with_var = choose_with_var[0].split(".")[0]
         choose_key = choose_with_var.replace("choose_", "")
         current_model = config.get("model")
