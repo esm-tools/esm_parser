@@ -54,6 +54,6 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     url='https://gitlab.awi.de/esm_tools/esm_parser',
-    version="4.2.4",
+    version="5.0.0",
     zip_safe=False,
 )
