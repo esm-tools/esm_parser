@@ -845,19 +845,16 @@ def add_entry_to_chapter(
                 mod_list = target_config[model_to_add_to][
                     add_chapter.split(".")[-1].replace("add_", "")
                 ]
-                # Add the entries
-                mod_list += add_entries
-                # Remove duplicates
-                mod_list_no_dupl = []
-                for el in mod_list:
-                    if not isinstance(el, (dict, tuple, list)):
-                        if not el in mod_list_no_dupl:
-                            mod_list_no_dupl.append(el)
+                # Add the entries avoiding duplicates
+                for entry in add_entries:
+                    if not isinstance(entry, (dict, tuple, list)):
+                        if not entry in mod_list_no_dupl:
+                            mod_list.append(entry)
                     else:
-                        mod_list_no_dupl.append(el)
+                        mod_list.append(entry)
                 target_config[model_to_add_to][
                     add_chapter.split(".")[-1].replace("add_", "")
-                ] = mod_list_no_dupl
+                ] = mod_list
                 global list_counter
                 list_counter += 1
             elif isinstance(
