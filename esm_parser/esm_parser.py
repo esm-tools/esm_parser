@@ -2181,14 +2181,14 @@ def could_be_bool(value):
 def could_be_int(value):
     try:
         int(value)
-        return True
+        return contains_underscore(value)
     except:
         try:
             intval = int(
                 float(value)
             )  # that is actually necessary, because of int("48.0")
             if intval - float(value) == 0.0:
-                return True
+                return contains_underscore(value)
             else:
                 return False
         except:
@@ -2198,7 +2198,7 @@ def could_be_int(value):
 def could_be_float(value):
     try:
         float(value)
-        return True
+        return contains_underscore(value)
     except:
         return False
 
@@ -2206,9 +2206,16 @@ def could_be_float(value):
 def could_be_complex(value):
     try:
         complex(value)
-        return True
+        return contains_underscore(value)
     except:
         return False
+
+
+def contains_underscore(value):
+    if isinstance(value, str):
+        if "_" in value:
+            return False
+    return True
 
 
 def convert(value):
