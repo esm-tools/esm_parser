@@ -2041,7 +2041,10 @@ def do_math_in_entry(tree, rhs, config):
             result = result[-1] # should be extended in the future - here: if list (= if diff between dates) than result in seconds
         result = str(result)
         entry = before_math + result + after_math
-    return convert(entry.strip())
+    if "[str]" in entry:
+        return entry.strip().replace("[str]", "")
+    else:
+        return convert(entry.strip())
 
 
 def mark_dates(tree, rhs, config):
