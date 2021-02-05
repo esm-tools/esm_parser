@@ -53,7 +53,7 @@ class EsmConfigFileError(Exception):
 # https://medium.com/swlh/python-yaml-configuration-with-environment-variables-parsing-77930f4273ac
 def create_env_loader(tag="!ENV", loader=yaml.SafeLoader):
     # pattern for global vars: look for ${word}
-    pattern = re.compile('.*?\${(\w+)}.*?')
+    pattern = re.compile('\${(\w+)}')
     # the tag will be used to mark where to start searching for the pattern
     # e.g. somekey: !ENV somestring${MYENVVAR}blah blah blah
     loader.add_implicit_resolver(tag, pattern, None)
