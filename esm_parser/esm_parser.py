@@ -110,15 +110,15 @@ DATE_MARKER = str(">>>THIS_IS_A_DATE<<<")
 import esm_rcfile
 
 
-FUNCTION_PATH = esm_rcfile.FUNCTION_PATH
+FUNCTION_PATH = esm_rcfile.EsmToolsDir("FUNCTION_PATH")
 SETUP_PATH = FUNCTION_PATH + "/setups"
 DEFAULTS_DIR = FUNCTION_PATH + "/defaults"
 COMPONENT_PATH = FUNCTION_PATH + "/components"
 
 
-esm_function_dir = esm_rcfile.FUNCTION_PATH
-esm_namelist_dir = esm_rcfile.get_rc_entry("NAMELIST_PATH", "NONE_YET")
-esm_runscript_dir = esm_rcfile.get_rc_entry("RUNSCRIPT_PATH", "NONE_YET")
+esm_function_dir = FUNCTION_PATH
+esm_namelist_dir = esm_rcfile.EsmToolsDir("NAMELIST_PATH")
+esm_runscript_dir = esm_rcfile.EsmToolsDir("RUNSCRIPT_PATH")
 
 gray_list = [
     r"choose_lresume",
