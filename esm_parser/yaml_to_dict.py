@@ -1,3 +1,5 @@
+import os
+import re
 import sys
 
 import yaml
@@ -47,6 +49,38 @@ class EsmConfigFileError(Exception):
         super().__init__(self.message)
 
 
+# This next part is stolen here:
+# https://medium.com/swlh/python-yaml-configuration-with-environment-variables-parsing-77930f4273ac
+def create_env_loader(tag="!ENV", loader=yaml.SafeLoader):
+    # pattern for global vars: look for ${word}
+    pattern = re.compile('\${(\w+)}')
+    # the tag will be used to mark where to start searching for the pattern
+    # e.g. somekey: !ENV somestring${MYENVVAR}blah blah blah
+    loader.add_implicit_resolver(tag, pattern, None)
+    def constructor_env_variables(loader, node):
+        """
+        Extracts the environment variable from the node's value
+        :param yaml.Loader loader: the yaml loader
+        :param node: the current node in the yaml
+        :return: the parsed string that contains the value of the environment
+        variable
+        """
+        value = loader.construct_scalar(node)
+        match = pattern.findall(value)  # to find all env variables in line
+        if match:
+            full_value = value
+            for g in match:
+                full_value = full_value.replace(
+                    f'${{{g}}}', os.environ.get(g, g)
+                )
+            return full_value
+        return value
+
+    loader.add_constructor(tag, constructor_env_variables)
+    return loader
+
+
+
 def yaml_file_to_dict(filepath):
     """
     Given a yaml file, returns a corresponding dictionary.
@@ -71,6 +105,7 @@ def yaml_file_to_dict(filepath):
     FileNotFoundError
         Raised when the YAML file cannot be found and all extensions have been tried.
     """
+    loader = create_env_loader()
     for extension in YAML_AUTO_EXTENSIONS:
         try:
             with open(filepath + extension) as yaml_file:
@@ -79,7 +114,7 @@ def yaml_file_to_dict(filepath):
                 # Back to the beginning of the file
                 yaml_file.seek(0, 0)
                 # Actually load the file
-                yaml_load =  yaml.load(yaml_file, Loader=yaml.FullLoader)
+                yaml_load =  yaml.load(yaml_file, Loader=loader) # yaml.FullLoader)
                 # Check for incompatible ``_changes`` (no more than one ``_changes``
                 # type should be accessible simultaneously)
                 check_changes_duplicates(yaml_load, filepath + extension)
@@ -158,7 +193,7 @@ def check_changes_duplicates(yamldict_all, fpath):
     # If it is a couple setup, check for ``_changes`` duplicates separately for each component
     if "general" not in yamldict_all:
         yamldict_all = {"main": yamldict_all}
-    
+
     # Loop through the components or main
     for yamldict in yamldict_all.values():
         # Check if any <variable>_changes or add_<variable> exists, if not, return
@@ -355,7 +390,8 @@ def check_duplicates(src):
         return loader.construct_mapping(node, deep)
 
     PreserveDuplicatesLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, map_constructor)
-    return yaml.load(src, Loader=PreserveDuplicatesLoader)
+    new_loader = create_env_loader(loader=PreserveDuplicatesLoader)
+    return yaml.load(src, Loader=new_loader)
 
 
 class EsmConfigFileError(Exception):
