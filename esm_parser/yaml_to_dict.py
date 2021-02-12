@@ -57,6 +57,7 @@ def create_env_loader(tag="!ENV", loader=yaml.SafeLoader):
     # the tag will be used to mark where to start searching for the pattern
     # e.g. somekey: !ENV somestring${MYENVVAR}blah blah blah
     loader.add_implicit_resolver(tag, pattern, None)
+    loader.env_variables = []
     def constructor_env_variables(loader, node):
         """
         Extracts the environment variable from the node's value
@@ -73,6 +74,7 @@ def create_env_loader(tag="!ENV", loader=yaml.SafeLoader):
                 full_value = full_value.replace(
                     f'${{{g}}}', os.environ.get(g, g)
                 )
+                loader.env_variables.append((g, full_value))
             return full_value
         return value
 
@@ -120,6 +122,15 @@ def yaml_file_to_dict(filepath):
                 check_changes_duplicates(yaml_load, filepath + extension)
                 # Add the file name you loaded from to track it back:
                 yaml_load["debug_info"] = {"loaded_from_file": yaml_file.name}
+                if loader.env_variables:
+                    runtime_env_changes = yaml_load.get("general", {}).get("runtime_environment_changes", {})
+                    add_export_vars = runtime_env_changes.get("add_export_vars", [])
+                    for env_var_name, env_var_value in loader.env_variables:
+                        add_export_vars.append(f"{env_var_name}={env_var_value}")
+                    # TODO(PG): There is probably a more elegant way of doing this:
+                    yaml_load['general'] = yaml_load.get("general") or {}
+                    yaml_load['general']['runtime_environment_changes'] = yaml_load['general'].get('runtime_environment_changes') or {}
+                    yaml_load['general']['runtime_environment_changes']['add_export_vars'] = add_export_vars
                 return yaml_load
         except IOError as error:
             logger.debug(
