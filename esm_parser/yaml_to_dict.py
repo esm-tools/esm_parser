@@ -57,6 +57,7 @@ def create_env_loader(tag="!ENV", loader=yaml.SafeLoader):
     # the tag will be used to mark where to start searching for the pattern
     # e.g. somekey: !ENV somestring${MYENVVAR}blah blah blah
     loader.add_implicit_resolver(tag, pattern, None)
+    loader.env_variables = []
     def constructor_env_variables(loader, node):
         """
         Extracts the environment variable from the node's value
@@ -73,6 +74,7 @@ def create_env_loader(tag="!ENV", loader=yaml.SafeLoader):
                 full_value = full_value.replace(
                     f'${{{g}}}', os.environ.get(g, g)
                 )
+                load.env_variables.append((value, full_value))
             return full_value
         return value
 
@@ -120,6 +122,7 @@ def yaml_file_to_dict(filepath):
                 check_changes_duplicates(yaml_load, filepath + extension)
                 # Add the file name you loaded from to track it back:
                 yaml_load["debug_info"] = {"loaded_from_file": yaml_file.name}
+                print(loader.env_variables)
                 return yaml_load
         except IOError as error:
             logger.debug(
