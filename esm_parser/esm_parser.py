@@ -163,13 +163,6 @@ def look_for_file(model, item):
             if os.path.isfile(possible_path + ending):
                 needs_loading = True
                 return possible_path + ending, needs_loading
-            if (possible_path + ending).startswith("NONE_YET"):
-                try:
-                    config = esm_tools.read_config_file(possible_path.replace("NONE_YET", "") + ending)
-                    needs_loading = False
-                    return config, needs_loading
-                except Exception as e:
-                    continue
     return None, None
 
 
@@ -1919,11 +1912,7 @@ def determine_computer_from_hostname():
     str
         A string for the path of the computer specific yaml file.
     """
-    # FIXME: This needs to be a resource file at some point
-    if FUNCTION_PATH.startswith("NONE_YET"):
-        all_computers = esm_tools.read_config_file("machines/all_machines.yaml")
-    else:
-        all_computers = yaml_file_to_dict(FUNCTION_PATH + "/machines/all_machines.yaml")
+    all_computers = yaml_file_to_dict(FUNCTION_PATH + "/machines/all_machines.yaml")
     for this_computer in all_computers:
         for computer_pattern in all_computers[this_computer].values():
             if isinstance(computer_pattern, str):
@@ -2474,23 +2463,15 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
             user_config["defaults"] = {}
 
         default_infos = {}
-        if not DEFAULTS_DIR.startswith("NONE_YET"):
-            for i in os.listdir(DEFAULTS_DIR):
-                file_contents = yaml_file_to_dict(DEFAULTS_DIR + "/" + i)
-                default_infos.update(file_contents)
-        else:
-            for i in esm_tools.list_config_dir(DEFAULTS_DIR.replace("NONE_YET/", "")):
-                file_contents = esm_tools.read_config_file(DEFAULTS_DIR.replace("NONE_YET/", "")+"/"+i)
-                default_infos.update(file_contents)
+        for i in os.listdir(DEFAULTS_DIR):
+            file_contents = yaml_file_to_dict(DEFAULTS_DIR + "/" + i)
+            default_infos.update(file_contents)
 
 
         user_config["defaults"].update(default_infos)
 
         computer_file = determine_computer_from_hostname()
-        if computer_file.startswith("NONE_YET"):
-            computer_config = esm_tools.read_config_file(computer_file.replace("NONE_YET/", ""))
-        else:
-            computer_config = yaml_file_to_dict(computer_file)
+        computer_config = yaml_file_to_dict(computer_file)
         setup_config = {
             "computer": computer_config,
             "general": {},
