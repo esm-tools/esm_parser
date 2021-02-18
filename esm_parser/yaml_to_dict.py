@@ -93,13 +93,15 @@ def create_env_loader(tag="!ENV", loader=yaml.SafeLoader):
         # read the file into a list of line. This can also be achieved by 
         # read() instead but since the YAML files are not large (max few KBs),
         # this is a quicked solution
-        file_lines = open(fname, 'r').readlines()
+        yaml_file = open(fname, 'r')
+        file_lines = yaml_file.readlines()
+        yaml_file.close()
         
         # current line without the newline at the end 
         cur_line = file_lines[line_num].rstrip()
         
         # Print extra debug messages if ESM_PARSER_DEBUG environment variable is set
-        if os.environ.get("ESM_PARSER_DEBUG", None):
+        if os.getenv("ESM_PARSER_DEBUG"):
             print()
             print("===== esm_parser -> yaml_to_dict.py -> create_env_loader() =====")
             print(f"::: Reading the file: {fname}")
@@ -125,8 +127,9 @@ def create_env_loader(tag="!ENV", loader=yaml.SafeLoader):
 
                     # first check if the variable exists in the shell environment
                     if not os.getenv(env_var): 
-                        print(f"!!! ERROR: {env_var} is not an environment variable. Exiting")
-                        sys.exit(1)
+                        esm_parser.user_error(f"{env_var} is not defined",
+                            f"{env_var} is not an environment variable. Exiting"
+                        )
                         
                     # replace {env_var} with the value of the env_var
                     full_value = full_value.replace(
