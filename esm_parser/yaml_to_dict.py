@@ -51,12 +51,25 @@ class EsmConfigFileError(Exception):
 
 # This next part is stolen here:
 # https://medium.com/swlh/python-yaml-configuration-with-environment-variables-parsing-77930f4273ac
+# Deniz: unfortunately this example as well as the other examples and even 
+# PyYaml itself is bit buggy. Basically everything with ${VAR} passes through 
+# the pipeline and this ends up replacing anything with ${VAR} with VAR and 
+# export them as environmental variables. That propagates even further and 
+# messes up the rest of the esm_tools (eg. master, runscripts, ...). The fix 
+# below corrects that issue.
 def create_env_loader(tag="!ENV", loader=yaml.SafeLoader):
-    # pattern for global vars: look for ${word}
-    pattern = re.compile('\${(\w+)}')
+    # pattern for ${VAR} and extract VAR 
+    pattern_envvar = re.compile('\${(\w+)}')
+    
+    # This pattern matches the valid (uncommented) !ENV lines. Eg.
+    # - !ENV ${VAR}
+    # - !ENV "${VAR}" or !ENV '${VAR}'
+    # Note: '!ENV ...' or "!ENV ..." does not work since PyYaml requires the tag outside of the quotes
+    pattern_envtag = re.compile("""^[^\#]*\!ENV[ \t]+['|"]?\$\{\w+\}['|"]?""")
+
     # the tag will be used to mark where to start searching for the pattern
     # e.g. somekey: !ENV somestring${MYENVVAR}blah blah blah
-    loader.add_implicit_resolver(tag, pattern, None)
+    loader.add_implicit_resolver(tag, pattern_envvar, None)
     loader.env_variables = []
     def constructor_env_variables(loader, node):
         """
@@ -66,16 +79,64 @@ def create_env_loader(tag="!ENV", loader=yaml.SafeLoader):
         :return: the parsed string that contains the value of the environment
         variable
         """
+        # file name (including the full path if not in PWD)
+        fname = node.start_mark.name
+
+        # line number (starts from 0) where match is found
+        line_num = node.start_mark.line
+
+        # start and end of the colums numbers in the line (starts from 0)
+        # For character index from the start of the file use node.start_mark.index
+        column_start = node.start_mark.column
+        column_end = node.end_mark.column
+        
+        # read the file into a list of line. This can also be achieved by 
+        # read() instead but since the YAML files are not large (max few KBs),
+        # this is a quicked solution
+        yaml_file = open(fname, 'r')
+        file_lines = yaml_file.readlines()
+        yaml_file.close()
+        
+        # current line without the newline at the end 
+        cur_line = file_lines[line_num].rstrip()
+        
+        # Print extra debug messages if ESM_PARSER_DEBUG environment variable is set
+        if os.getenv("ESM_PARSER_DEBUG"):
+            print()
+            print("===== esm_parser -> yaml_to_dict.py -> create_env_loader() =====")
+            print(f"::: Reading the file: {fname}")
+            print("::: Reading the line:")
+            print(f">>>{cur_line}<<<")
+            print(f"::: found the match: >>>{cur_line[column_start:column_end]}<<<")
+            print("==================== END OF ESM_PARSER_DEBUG ===================")
+            print()
+        
         value = loader.construct_scalar(node)
-        match = pattern.findall(value)  # to find all env variables in line
-        if match:
-            full_value = value
-            for g in match:
-                full_value = full_value.replace(
-                    f'${{{g}}}', os.environ.get(g, g)
-                )
-                loader.env_variables.append((g, full_value))
-            return full_value
+        
+        # Check if we have a valid !ENV tag on the line
+        envtag_match = re.search(pattern_envtag, cur_line)
+        
+        # list of matches for ${VAR}. Each match is VAR
+        envvar_matches = pattern_envvar.findall(value) 
+
+        # Parse the environmental variables only if the line has a valid !ENV tag
+        if envtag_match:
+            if envvar_matches: 
+                full_value = value
+                for env_var in envvar_matches:
+
+                    # first check if the variable exists in the shell environment
+                    if not os.getenv(env_var): 
+                        esm_parser.user_error(f"{env_var} is not defined",
+                            f"{env_var} is not an environment variable. Exiting"
+                        )
+                        
+                    # replace {env_var} with the value of the env_var
+                    full_value = full_value.replace(
+                        f'${{{env_var}}}', os.getenv(env_var)
+                    )
+                    loader.env_variables.append((env_var, full_value))
+                return full_value
         return value
 
     loader.add_constructor(tag, constructor_env_variables)
