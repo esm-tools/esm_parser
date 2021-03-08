@@ -572,6 +572,25 @@ def deep_update(chapter, entries, config, blackdict={}):
      else:
         if chapter not in blackdict:
             dict_merge(config, {chapter: entries})
+     
+        # deniz: bugfix: choose_ blocks with "*" keys don't get updated. Eg. 
+        # mail1 and mail2 don't get updated since they are initialized as empty
+        # strings and are already inside. Current bug fix only correct scalar
+        # types such as strings.  
+        else:
+            empty_values = ["", None]  # some possible empty values to override
+
+            # strip all whitespace. Eg. "  " -> "", if it is only space
+            if (isinstance(blackdict[chapter], str) and 
+                blackdict[chapter].isspace()):
+                blackdict[chapter] = re.sub(r"\s+", "", blackdict[chapter])
+
+            # The update_key (chapter) is already inside the blackdict however,
+            # its value (entries) it not empty. So, update them 
+            if (blackdict[chapter] in empty_values and entries not in 
+                empty_values):
+                dict_merge(config, {chapter: entries})
+                
 
 
 def find_remove_entries_in_config(mapping, model_name, models = []):
