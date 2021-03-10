@@ -188,7 +188,7 @@ def look_for_file(model, item):
                 needs_loading = True
                 return possible_path + ending, needs_loading
 
-    # If the item is a subversion of a model version with it's own file (e.g.
+    # If the item is a subversion of a model version with its own file (e.g.
     # item = fesom-2.0-jio and model = fesom), the previous lines won't be able
     # to find the versioned file (e.g. fesom-2.0.yaml) cause it is looking for
     # a file which name contains the whole item string (e.g. fesom-2.0-jio.yaml).
