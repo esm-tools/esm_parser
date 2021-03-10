@@ -144,6 +144,30 @@ if six.PY2:  # pragma: no cover
 
 
 def look_for_file(model, item):
+    """
+    Finds the file containing the configuration of a component, model, coupled setup
+    or software included in `ESM-Tools`. The ``model`` input provides a general name,
+    normally the folder where all the versioned files of that component are contained.
+    The ``item`` input can contain information about the version. If the configuration
+    file is not found, ``item`` will be reduced one ``-`` back and ``look_for_file``
+    will be called recursively.
+
+    Parameters
+    ----------
+    model : str
+        General name of the model, component, coupled setup or software.
+    item : str
+        Name of the component and the version needed.
+
+    Returns
+    -------
+    possible_path : str
+        Path to the configuration file.
+    needs_loading : bool
+        Boolean to indicate the need of loading the file.
+    """
+
+    # Loop through all possible path combinations
     for possible_path in [
             SETUP_PATH + "/" + model + "/" + item  ,
             COMPONENT_PATH + "/" + model + "/" + item ,
@@ -151,7 +175,7 @@ def look_for_file(model, item):
             FUNCTION_PATH + "/other_software/" + model + "/" + item,
             FUNCTION_PATH + "/" + model + "/" + item ,
             ]:
-
+        # Loop through all possible formats
         for ending in [
                 "",
                 ".yaml",
@@ -159,12 +183,25 @@ def look_for_file(model, item):
                 ".YAML",
                 ".YML",
                 ]:
-
+            # Check if the file exists and if it does return its path
             if os.path.isfile(possible_path + ending):
                 needs_loading = True
                 return possible_path + ending, needs_loading
-    return None, None
 
+    # If the item is a subversion of a model version with it's own file (e.g.
+    # item = fesom-2.0-jio and model = fesom), the previous lines won't be able
+    # to find the versioned file (e.g. fesom-2.0.yaml) cause it is looking for
+    # a file which name contains the whole item string (e.g. fesom-2.0-jio.yaml).
+    # To solve that kind of problem the item's name is reduced to the last "-"
+    # (e.g. to fesom-2.0) and then ``look_for_file`` is called recursively
+    new_item = "-".join(item.split('-')[:-1])
+    if len(new_item)>0:
+        possible_path, needs_loading = look_for_file(model, new_item)
+        if possible_path:
+            return possible_path, needs_loading
+
+    # The file was not found
+    return None, None
 
 
 def shell_file_to_dict(filepath):
