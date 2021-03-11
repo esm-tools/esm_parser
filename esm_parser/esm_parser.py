@@ -201,7 +201,8 @@ def look_for_file(model, item):
             return possible_path, needs_loading
 
     # The file was not found
-    return None, None
+    warnings.warn(f'File for "{item}" not found in "{model}"')
+    return None, False
 
 
 def shell_file_to_dict(filepath):
