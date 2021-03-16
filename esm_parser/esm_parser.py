@@ -594,7 +594,8 @@ def dict_merge(dct, merge_dct):
                     else:
                         dct["debug_info"]["loaded_from_file"].append(merge_dct["debug_info"]["loaded_from_file"])
         else:
-            dct[k] = merge_dct[k]
+            import copy
+            dct[k] = copy.deepcopy(merge_dct[k])
 
 
 def deep_update(chapter, entries, config, blackdict={}):
@@ -610,25 +611,25 @@ def deep_update(chapter, entries, config, blackdict={}):
      else:
         if chapter not in blackdict:
             dict_merge(config, {chapter: entries})
-     
-        # deniz: bugfix: choose_ blocks with "*" keys don't get updated. Eg. 
+
+        # deniz: bugfix: choose_ blocks with "*" keys don't get updated. Eg.
         # mail1 and mail2 don't get updated since they are initialized as empty
         # strings and are already inside. Current bug fix only correct scalar
-        # types such as strings.  
+        # types such as strings.
         else:
             empty_values = ["", None]  # some possible empty values to override
 
             # strip all whitespace. Eg. "  " -> "", if it is only space
-            if (isinstance(blackdict[chapter], str) and 
+            if (isinstance(blackdict[chapter], str) and
                 blackdict[chapter].isspace()):
                 blackdict[chapter] = re.sub(r"\s+", "", blackdict[chapter])
 
             # The update_key (chapter) is already inside the blackdict however,
-            # its value (entries) it not empty. So, update them 
-            if (blackdict[chapter] in empty_values and entries not in 
+            # its value (entries) it not empty. So, update them
+            if (blackdict[chapter] in empty_values and entries not in
                 empty_values):
                 dict_merge(config, {chapter: entries})
-                
+
 
 
 def find_remove_entries_in_config(mapping, model_name, models = []):
@@ -1762,6 +1763,8 @@ def actually_find_variable(tree, rhs, full_config):
             var_result = recursive_get(full_config, config_elements)
             # return var_result
         except:
+            import pdb
+            pdb.set_trace()
             raise EsmParserError("Sorry, a variable was not resolved: %s not found" % (rhs))
 
     return var_result, var_attr
