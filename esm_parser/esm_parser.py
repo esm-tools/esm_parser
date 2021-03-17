@@ -1254,6 +1254,9 @@ def resolve_basic_choose(config, config_to_replace_in, choose_key, blackdict={})
             #del config_to_replace_in[choose_key]
             gray_list.append(re.compile(choose_key))
             return
+    # Evaluates the mathematical expressions in the choose_ blocks
+    if isinstance(choice, str) and "$((" in choice:
+        choice = do_math_in_entry([False], choice, config)
     logging.debug(choice)
 
     if choice in config_to_replace_in.get(choose_key):
