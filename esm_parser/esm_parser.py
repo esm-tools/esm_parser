@@ -2645,6 +2645,11 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
                 for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
                     attach_to_config_and_remove(model_config[model], attachment)
 
+        # Allows the ``general`` section to be able to handle attachable files (e.g.
+        # ``further_reading``)
+        for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
+            attach_to_config_and_remove(setup_config["general"], attachment)
+
         #if "models" in setup_config["general"]:
         #    new_model_list = []
         #    for model in setup_config["general"]["models"]:
