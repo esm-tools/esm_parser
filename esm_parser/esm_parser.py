@@ -1601,6 +1601,10 @@ def recursive_run_function(tree, right, level, func, *args, **kwargs):
     elif isinstance(right, dict):
         keys = list(right)
         for key in keys:
+            # Avoid doing this for ``prev_run`` chapters, this is not needed as the
+            # previous config is already resolved
+            if key == "prev_run":
+                continue
             value = right[key]
             right[key] = recursive_run_function(
                 tree + [key], value, level, func, *args, **kwargs
