@@ -2723,8 +2723,13 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
         if not "coupled_setup" in self.config["general"]:
             self._blackdict = blackdict = user_config
 
-        pdb.set_trace()                                                                                                # deniz:
         
+        # deniz: if the user-defined forcing_sources (inside the runscript) is
+        # a dictionary with multiple levels then the users need to provide
+        # 'overwrite' key at the level that they want to change. Otherwise,
+        # the parser basically appends that to the forcing_sources and since
+        # Python dictionaries are unordered noone can guarantee which source is
+        # taken
         self.config = dict_overwrite(sender=user_config, receiver=self.config, 
             key_path=[], verbose=self.config['general']['verbose'])
         
