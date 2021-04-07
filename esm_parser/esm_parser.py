@@ -598,6 +598,79 @@ def deep_update(chapter, entries, config, blackdict={}):
                 empty_values):
                 dict_merge(config, {chapter: entries})
                 
+                
+def dict_overwrite(sender, receiver, key_path=[], recursion_level=0, verbose=False):
+    """Recursively search through the dictionary and replace the keys with the
+    ``overwrite`` tag
+
+    Parameters
+    ----------
+    sender : dict
+        contains the information with the key 'overwrite' to replace the
+        information in the receiver dictionary.
+    receiver : dict
+        contains the information that will be replaced by the sender dictionary.
+    key_path : list
+        used only in the recursive call. Contains the nested dictionary structure.
+    recursion_level : int
+        used only in the recursive call. Stores the value of the recursion depth.
+    verbose : bool
+        if True then the function will print the before/after information
+
+    Returns
+    -------
+    receiver : dict
+        The input argument is overwritten
+    """
+    # iterate over the sender dictionary and enter recursively search for the
+    # boolean key "overwrite". It is assumed that 'key' is also present in the
+    # receiver
+    for key in sender:
+        # clear the key_path upon first entry or new entry after recursion
+        if recursion_level == 0:
+            key_path.clear()
+        else:
+            # len(key_path) is recursion_level. Only take up to the current
+            # recursion level to prevent unnecessary appends
+            key_path = key_path[: recursion_level]
+
+        key_path.append(key)
+
+        if isinstance(receiver[key], dict):
+            # check if there is "overwrite" key whose value is True
+            if sender[key].get('overwrite', False):
+                del sender[key]['overwrite']     # clean up
+                value_before = copy.deepcopy(receiver[key])
+
+                # update (overwrite) the value in the receiving dictionary
+                receiver[key] = copy.deepcopy(sender[key])
+
+                # print the changed section
+                if verbose:
+                    space = "    "
+                    path_str = ' -> '.join(key_path)
+                    print(f"::: Overwriting the path:    [{path_str}]")
+                    print("::: value before:")
+                    before_str = f"{space}{yaml.dump(value_before, indent=4)}"
+                    before_str = before_str.replace('\n', f'\n{space}')
+                    before_str = re.sub(r'\n[ \t]*$', '', before_str)
+                    print(before_str)
+                    print("---")
+                    
+                    print("::: value after:")
+                    after_str = f"{space}{yaml.dump(receiver[key], indent=4)}"
+                    after_str = after_str.replace('\n', f'\n{space}')
+                    after_str = re.sub(r'\n[ \t]*$', '', after_str)
+                    print(after_str)
+                    print()
+            else:
+                # enter into recursion using the current dictionary values. Keep
+                # track of the recursion path and depth
+                dict_overwrite(sender[key], receiver[key], key_path=key_path,
+                    recursion_level=recursion_level+1, verbose=verbose)
+
+    return receiver                
+                
 
 
 def find_remove_entries_in_config(mapping, model_name, models = []):
@@ -2650,6 +2723,12 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
         if not "coupled_setup" in self.config["general"]:
             self._blackdict = blackdict = user_config
 
+        pdb.set_trace()                                                                                                # deniz:
+        
+        self.config = dict_overwrite(sender=user_config, receiver=self.config, 
+            key_path=[], verbose=self.config['general']['verbose'])
+        
+        
         #pprint_config(self.config)
         #sys.exit(0)
 
