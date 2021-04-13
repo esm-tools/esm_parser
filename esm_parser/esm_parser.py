@@ -667,7 +667,7 @@ def dict_overwrite(sender, receiver, key_path=[], recursion_level=0, verbose=Fal
 
         key_path.append(key)
 
-        if isinstance(receiver[key], dict):
+        if isinstance(receiver.get(key, None), dict):
             # check if there is "overwrite" key whose value is True
             if sender[key].get('overwrite', False):
                 del sender[key]['overwrite']     # clean up
@@ -2755,8 +2755,7 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
         # Python dictionaries are unordered noone can guarantee which source is
         # taken
         self.config = dict_overwrite(sender=user_config, receiver=self.config, 
-            key_path=[], verbose=self.config['general']['verbose'])
-        
+            key_path=[], verbose=self.config['general'].get('verbose', False))
         
         #pprint_config(self.config)
         #sys.exit(0)
