@@ -184,14 +184,14 @@ def yaml_file_to_dict(filepath):
                 # Add the file name you loaded from to track it back:
                 yaml_load["debug_info"] = {"loaded_from_file": yaml_file.name}
                 if loader.env_variables:
-                    runtime_env_changes = yaml_load.get("general", {}).get("runtime_environment_changes", {})
-                    add_export_vars = runtime_env_changes.get("add_export_vars", [])
+                    runtime_env_changes = yaml_load.get("computer", {}).get("runtime_environment_changes", {})
+                    add_export_vars = runtime_env_changes.get("add_export_vars", {})
                     for env_var_name, env_var_value in loader.env_variables:
-                        add_export_vars.append(f"{env_var_name}={env_var_value}")
+                        add_export_vars[env_var_name] = env_var_value
                     # TODO(PG): There is probably a more elegant way of doing this:
-                    yaml_load['general'] = yaml_load.get("general") or {}
-                    yaml_load['general']['runtime_environment_changes'] = yaml_load['general'].get('runtime_environment_changes') or {}
-                    yaml_load['general']['runtime_environment_changes']['add_export_vars'] = add_export_vars
+                    yaml_load['computer'] = yaml_load.get("computer") or {}
+                    yaml_load['computer']['runtime_environment_changes'] = yaml_load['computer'].get('runtime_environment_changes') or {}
+                    yaml_load['computer']['runtime_environment_changes']['add_export_vars'] = add_export_vars
                 return yaml_load
         except IOError as error:
             logger.debug(
