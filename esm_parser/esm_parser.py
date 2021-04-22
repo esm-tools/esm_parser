@@ -1770,24 +1770,24 @@ def list_to_multikey(tree, rhs, config_to_search, ignore_list, isblacklist):
                     return_dict2 = {}
                     for key in entries_of_key:
                         return_dict2[
-                            lhs.replace("[[" + actual_list + "]]", key).replace(
-                                value_in_list, key
+                            lhs.replace("[[" + actual_list + "]]", str(key)).replace(
+                                value_in_list, str(key)
                             )
-                        ] = rhs.replace(value_in_list, key)
+                        ] = rhs.replace(value_in_list, str(key))
 
                 if isinstance(rhs, list):
                     replaced_list = []
                     for item in rhs:
                         if isinstance(item, str):
                             for key in entries_of_key:
-                                replaced_list.append(item.replace(value_in_list, key))
+                                replaced_list.append(item.replace(value_in_list, str(key)))
                         else:
                             replaced_list.append(item)
                     return_dict2 = {}
                     for key in entries_of_key:
                         return_dict2[
-                            lhs.replace("[[" + actual_list + "]]", key).replace(
-                                value_in_list, key
+                            lhs.replace("[[" + actual_list + "]]", str(key)).replace(
+                                value_in_list, str(key)
                             )
                         ] = replaced_list
 
@@ -1860,6 +1860,8 @@ def list_to_multikey(tree, rhs, config_to_search, ignore_list, isblacklist):
                     return_dict = return_dict2
                 return return_dict
             return {lhs: rhs}
+
+
         if isinstance(rhs, str) and list_fence in rhs:
             rhs_list = []
             ok_part, rest = rhs.split(list_fence, 1)
@@ -1880,14 +1882,14 @@ def list_to_multikey(tree, rhs, config_to_search, ignore_list, isblacklist):
                             value_in_list, str(entry)
                         )
                     )
-                if isinstance(entries_of_key, str):
-                    entries_of_key = [entries_of_key]
-                for entry in entries_of_key:
-                    rhs_list.append(
-                        rhs.replace("[[" + actual_list + "]]", entry).replace(
-                            value_in_list, entry
-                        )
-                    )
+                #if isinstance(entries_of_key, str):
+                #    entries_of_key = [entries_of_key]
+                #for entry in entries_of_key:
+                #    rhs_list.append(
+                #        rhs.replace("[[" + actual_list + "]]", str(entry)).replace(
+                #            value_in_list, str(entry)
+                #        )
+                #    )
             if list_fence in new_raw:
                 out_list = []
                 for rhs_listitem in rhs_list:
