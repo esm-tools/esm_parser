@@ -110,15 +110,15 @@ DATE_MARKER = str(">>>THIS_IS_A_DATE<<<")
 import esm_rcfile
 
 
-FUNCTION_PATH = esm_rcfile.FUNCTION_PATH
+FUNCTION_PATH = esm_rcfile.EsmToolsDir("FUNCTION_PATH")
 SETUP_PATH = FUNCTION_PATH + "/setups"
 DEFAULTS_DIR = FUNCTION_PATH + "/defaults"
 COMPONENT_PATH = FUNCTION_PATH + "/components"
 
 
-esm_function_dir = esm_rcfile.FUNCTION_PATH
-esm_namelist_dir = esm_rcfile.get_rc_entry("NAMELIST_PATH", "NONE_YET")
-esm_runscript_dir = esm_rcfile.get_rc_entry("RUNSCRIPT_PATH", "NONE_YET")
+esm_function_dir = FUNCTION_PATH
+esm_namelist_dir = esm_rcfile.EsmToolsDir("NAMELIST_PATH")
+esm_runscript_dir = esm_rcfile.EsmToolsDir("RUNSCRIPT_PATH")
 
 gray_list = [
     r"choose_lresume",
@@ -144,6 +144,30 @@ if six.PY2:  # pragma: no cover
 
 
 def look_for_file(model, item):
+    """
+    Finds the file containing the configuration of a component, model, coupled setup
+    or software included in `ESM-Tools`. The ``model`` input provides a general name,
+    normally the folder where all the versioned files of that component are contained.
+    The ``item`` input can contain information about the version. If the configuration
+    file is not found, ``item`` will be reduced one ``-`` back and ``look_for_file``
+    will be called recursively.
+
+    Parameters
+    ----------
+    model : str
+        General name of the model, component, coupled setup or software.
+    item : str
+        Name of the component and the version needed.
+
+    Returns
+    -------
+    possible_path : str
+        Path to the configuration file.
+    needs_loading : bool
+        Boolean to indicate the need of loading the file.
+    """
+
+    # Loop through all possible path combinations
     for possible_path in [
             SETUP_PATH + "/" + model + "/" + item  ,
             COMPONENT_PATH + "/" + model + "/" + item ,
@@ -151,7 +175,7 @@ def look_for_file(model, item):
             FUNCTION_PATH + "/other_software/" + model + "/" + item,
             FUNCTION_PATH + "/" + model + "/" + item ,
             ]:
-
+        # Loop through all possible formats
         for ending in [
                 "",
                 ".yaml",
@@ -159,19 +183,26 @@ def look_for_file(model, item):
                 ".YAML",
                 ".YML",
                 ]:
-
+            # Check if the file exists and if it does return its path
             if os.path.isfile(possible_path + ending):
                 needs_loading = True
                 return possible_path + ending, needs_loading
-            if (possible_path + ending).startswith("NONE_YET"):
-                try:
-                    config = esm_tools.read_config_file(possible_path.replace("NONE_YET", "") + ending)
-                    needs_loading = False
-                    return config, needs_loading
-                except Exception as e:
-                    continue
-    return None, None
 
+    # If the item is a subversion of a model version with its own file (e.g.
+    # item = fesom-2.0-jio and model = fesom), the previous lines won't be able
+    # to find the versioned file (e.g. fesom-2.0.yaml) cause it is looking for
+    # a file which name contains the whole item string (e.g. fesom-2.0-jio.yaml).
+    # To solve that kind of problem the item's name is reduced to the last "-"
+    # (e.g. to fesom-2.0) and then ``look_for_file`` is called recursively
+    new_item = "-".join(item.split('-')[:-1])
+    if len(new_item)>0:
+        possible_path, needs_loading = look_for_file(model, new_item)
+        if possible_path:
+            return possible_path, needs_loading
+
+    # The file was not found
+    warnings.warn(f'File for "{item}" not found in "{model}"')
+    return None, False
 
 
 def shell_file_to_dict(filepath):
@@ -1643,6 +1674,10 @@ def recursive_run_function(tree, right, level, func, *args, **kwargs):
     elif isinstance(right, dict):
         keys = list(right)
         for key in keys:
+            # Avoid doing this for ``prev_run`` chapters, this is not needed as the
+            # previous config is already resolved
+            if key == "prev_run":
+                continue
             value = right[key]
             right[key] = recursive_run_function(
                 tree + [key], value, level, func, *args, **kwargs
@@ -2014,11 +2049,7 @@ def determine_computer_from_hostname():
     str
         A string for the path of the computer specific yaml file.
     """
-    # FIXME: This needs to be a resource file at some point
-    if FUNCTION_PATH.startswith("NONE_YET"):
-        all_computers = esm_tools.read_config_file("machines/all_machines.yaml")
-    else:
-        all_computers = yaml_file_to_dict(FUNCTION_PATH + "/machines/all_machines.yaml")
+    all_computers = yaml_file_to_dict(FUNCTION_PATH + "/machines/all_machines.yaml")
     for this_computer in all_computers:
         for computer_pattern in all_computers[this_computer].values():
             if isinstance(computer_pattern, str):
@@ -2569,23 +2600,15 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
             user_config["defaults"] = {}
 
         default_infos = {}
-        if not DEFAULTS_DIR.startswith("NONE_YET"):
-            for i in os.listdir(DEFAULTS_DIR):
-                file_contents = yaml_file_to_dict(DEFAULTS_DIR + "/" + i)
-                default_infos.update(file_contents)
-        else:
-            for i in esm_tools.list_config_dir(DEFAULTS_DIR.replace("NONE_YET/", "")):
-                file_contents = esm_tools.read_config_file(DEFAULTS_DIR.replace("NONE_YET/", "")+"/"+i)
-                default_infos.update(file_contents)
+        for i in os.listdir(DEFAULTS_DIR):
+            file_contents = yaml_file_to_dict(DEFAULTS_DIR + "/" + i)
+            default_infos.update(file_contents)
 
 
         user_config["defaults"].update(default_infos)
 
         computer_file = determine_computer_from_hostname()
-        if computer_file.startswith("NONE_YET"):
-            computer_config = esm_tools.read_config_file(computer_file.replace("NONE_YET/", ""))
-        else:
-            computer_config = yaml_file_to_dict(computer_file)
+        computer_config = yaml_file_to_dict(computer_file)
         setup_config = {
             "computer": computer_config,
             "general": {},
@@ -2698,6 +2721,11 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
             for model in list(model_config):
                 for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
                     attach_to_config_and_remove(model_config[model], attachment)
+
+        # Allows the ``general`` section to be able to handle attachable files (e.g.
+        # ``further_reading``)
+        for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
+            attach_to_config_and_remove(setup_config["general"], attachment)
 
         #if "models" in setup_config["general"]:
         #    new_model_list = []

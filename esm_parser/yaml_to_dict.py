@@ -184,14 +184,14 @@ def yaml_file_to_dict(filepath):
                 # Add the file name you loaded from to track it back:
                 yaml_load["debug_info"] = {"loaded_from_file": yaml_file.name}
                 if loader.env_variables:
-                    runtime_env_changes = yaml_load.get("general", {}).get("runtime_environment_changes", {})
-                    add_export_vars = runtime_env_changes.get("add_export_vars", [])
+                    runtime_env_changes = yaml_load.get("computer", {}).get("runtime_environment_changes", {})
+                    add_export_vars = runtime_env_changes.get("add_export_vars", {})
                     for env_var_name, env_var_value in loader.env_variables:
-                        add_export_vars.append(f"{env_var_name}={env_var_value}")
+                        add_export_vars[env_var_name] = env_var_value
                     # TODO(PG): There is probably a more elegant way of doing this:
-                    yaml_load['general'] = yaml_load.get("general") or {}
-                    yaml_load['general']['runtime_environment_changes'] = yaml_load['general'].get('runtime_environment_changes') or {}
-                    yaml_load['general']['runtime_environment_changes']['add_export_vars'] = add_export_vars
+                    yaml_load['computer'] = yaml_load.get("computer") or {}
+                    yaml_load['computer']['runtime_environment_changes'] = yaml_load['computer'].get('runtime_environment_changes') or {}
+                    yaml_load['computer']['runtime_environment_changes']['add_export_vars'] = add_export_vars
                 return yaml_load
         except IOError as error:
             logger.debug(
@@ -370,9 +370,21 @@ def check_changes_duplicates(yamldict_all, fpath):
         for add_group in add_groups:
             # Count ``add_`` occurrences out of a ``choose_``
             add_no_choose = [x for x in add_group if "choose_" not in x]
+            # Check if the heading of the path is the same. If not is not a
+            # repetition
+            for anc in add_no_choose:
+                add_no_choose = []
+                heading = anc.split(",")[0]
+                counter = 0
+                for ag in add_group:
+                    if heading in ag:
+                        counter += 1
+                if counter > 1:
+                    add_no_choose.append(anc)
+
             # If one ``add_`` without ``choose_`` check for ``add_`` inside
             # ``choose_`` and return error if any is found (incompatible ``add_``s)
-            if len(add_no_choose) == 1:
+            if len(add_no_choose) >= 1:
                 add_group.remove(add_no_choose[0])
                 if len(add_group) > 0:
                     add_group = [x.replace(",", ".") for x in add_group]
