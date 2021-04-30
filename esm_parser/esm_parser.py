@@ -292,6 +292,8 @@ def pprint_config(config):  # pragma: no cover
     -------
     None
     """
+    # Delete the ``prev_run`` chapter: we don't need to print the info from the
+    # previous run.
     config_to_print = copy.deepcopy(config) #PrevRunInfo
     if "prev_run" in config_to_print:       #PrevRunInfo
         del config_to_print["prev_run"]     #PrevRunInfo
