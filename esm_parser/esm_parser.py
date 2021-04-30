@@ -292,8 +292,11 @@ def pprint_config(config):  # pragma: no cover
     -------
     None
     """
+    config_to_print = copy.deepcopy(config) #PrevRunInfo
+    if "prev_run" in config_to_print:       #PrevRunInfo
+        del config_to_print["prev_run"]     #PrevRunInfo
     yaml.Dumper.ignore_aliases = lambda *args: True
-    print(yaml.dump(config, default_flow_style=False))
+    print(yaml.dump(config_to_print, default_flow_style=False))
 
 
 def attach_to_config_and_reduce_keyword(
@@ -1676,8 +1679,8 @@ def recursive_run_function(tree, right, level, func, *args, **kwargs):
         for key in keys:
             # Avoid doing this for ``prev_run`` chapters, this is not needed as the
             # previous config is already resolved
-            if key == "prev_run":
-                continue
+            if key == "prev_run": #PrevRunInfo
+                continue          #PrevRunInfo
             value = right[key]
             right[key] = recursive_run_function(
                 tree + [key], value, level, func, *args, **kwargs
