@@ -2629,6 +2629,13 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
 
         if "general" in self.config and "coupled_setup" in self.config["general"]:
             setup_config["general"].update({"standalone": False})
+            # Resolve choose with include_models
+            resolve_choose_with_var(
+                "include_models",
+                self.config["general"],
+                user_config=user_config,
+                setup_config=setup_config,
+            )
             setup_config["general"]["include_models"] = self.config["general"][
                 "include_models"
             ]
@@ -2650,7 +2657,7 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
             setup_config["general"].update({"standalone": True})
             setup_config["general"].update({"models": [self.config["model"]]})
 
-            # Resolve choose with include_models (Miguel)
+            # Resolve choose with include_models
             resolve_choose_with_var(
                 "include_models",
                 self.config,
