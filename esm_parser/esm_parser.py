@@ -168,32 +168,27 @@ def look_for_file(model, item):
     """
 
     # Loop through all possible path combinations
-    possible_paths = [ f"{SETUP_PATH}/{model}/{item}",                                                                 # deniz: this is better
+    possible_paths = [ f"{SETUP_PATH}/{model}/{item}",
         f"{COMPONENT_PATH}/{model}/{item}",
         f"{FUNCTION_PATH}/esm_software/{model}/{item}",
         f"{FUNCTION_PATH}/other_software/{model}/{item}",
         f"{FUNCTION_PATH}/{model}/{item}",
-        # f"{os.getcwd()}/{item}"                                                                                        # deniz: added this
+        f"{os.getcwd()}/{item}"
     ]
 
-    endings = [ "", ".yaml", ".yml", ".YAML", ".YML" ]                                                             # deniz: this is better
+    endings = [ "", ".yaml", ".yml", ".YAML", ".YML" ]
     
-    # import pdb; pdb.set_trace()                                                                                        # deniz:
-
     for possible_path in possible_paths:
-        
-        # Loop through all possible formats
-        for ending in endings:
+        # first strip off any file extensions and add the current one
+        root_name = os.path.splitext(possible_path)[0]
 
-            # first strip off  any file extensions and add the current one                                             # deniz:
-            # possible_path = os.path.splitext(possible_path)[0]
-            # possible_path += ending
+        for ending in endings:
+            file_path = root_name + ending
 
             # Check if the file exists and if it does return its path
-            if os.path.isfile(possible_path):
+            if os.path.isfile(file_path):
                 needs_loading = True
-                # return possible_path, needs_loading                                                                  # deniz:
-                return possible_path + ending, needs_loading
+                return file_path, needs_loading
 
     # If the item is a subversion of a model version with its own file (e.g.
     # item = fesom-2.0-jio and model = fesom), the previous lines won't be able
