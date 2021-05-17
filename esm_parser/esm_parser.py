@@ -168,24 +168,31 @@ def look_for_file(model, item):
     """
 
     # Loop through all possible path combinations
-    for possible_path in [
-            SETUP_PATH + "/" + model + "/" + item  ,
-            COMPONENT_PATH + "/" + model + "/" + item ,
-            FUNCTION_PATH + "/esm_software/" + model + "/" + item,
-            FUNCTION_PATH + "/other_software/" + model + "/" + item,
-            FUNCTION_PATH + "/" + model + "/" + item ,
-            ]:
+    possible_paths = [ f"{SETUP_PATH}/{model}/{item}",                                                                 # deniz: this is better
+        f"{COMPONENT_PATH}/{model}/{item}",
+        f"{FUNCTION_PATH}/esm_software/{model}/{item}",
+        f"{FUNCTION_PATH}/other_software/{model}/{item}",
+        f"{FUNCTION_PATH}/{model}/{item}",
+        # f"{os.getcwd()}/{item}"                                                                                        # deniz: added this
+    ]
+
+    endings = [ "", ".yaml", ".yml", ".YAML", ".YML" ]                                                             # deniz: this is better
+    
+    # import pdb; pdb.set_trace()                                                                                        # deniz:
+
+    for possible_path in possible_paths:
+        
         # Loop through all possible formats
-        for ending in [
-                "",
-                ".yaml",
-                ".yml",
-                ".YAML",
-                ".YML",
-                ]:
+        for ending in endings:
+
+            # first strip off  any file extensions and add the current one                                             # deniz:
+            # possible_path = os.path.splitext(possible_path)[0]
+            # possible_path += ending
+
             # Check if the file exists and if it does return its path
-            if os.path.isfile(possible_path + ending):
+            if os.path.isfile(possible_path):
                 needs_loading = True
+                # return possible_path, needs_loading                                                                  # deniz:
                 return possible_path + ending, needs_loading
 
     # If the item is a subversion of a model version with its own file (e.g.
