@@ -605,12 +605,7 @@ def dict_merge(dct, merge_dct):
 
 
 def deep_update(chapter, entries, config, blackdict={}):
-     if "remove_" in chapter:
-        remove_chapter = chapter.replace("remove_", "")
-        remove_entries_from_chapter(config, remove_chapter, entries)
-        #del config[chapter]
-
-     elif "add_" in chapter:
+     if "add_" in chapter:
         add_chapter = chapter.replace("add_", "")
         add_entries_from_chapter(config, add_chapter, entries)
         #del config[chapter]
@@ -786,7 +781,7 @@ def remove_entry_from_chapter(
     """
 
     logging.debug("%s, %s", remove_entries, remove_chapter)
-    # Check that the the user entry is a least, if not rise an exception
+    # Check that the the user entry is a list, if not rise an exception
     if not isinstance(remove_entries, list):
         raise TypeError("Please put all entries to remove as a list")
     # Check for ``namelist_changes`` and change the extension dot ``.`` for a ``,``
