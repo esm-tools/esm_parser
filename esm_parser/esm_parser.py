@@ -177,13 +177,11 @@ def look_for_file(model, item):
     ]
 
     endings = [ "", ".yaml", ".yml", ".YAML", ".YML" ]
-    
+
     for possible_path in possible_paths:
-        # first strip off any file extensions and add the current one
-        root_name = os.path.splitext(possible_path)[0]
 
         for ending in endings:
-            file_path = root_name + ending
+            file_path = possible_path + ending
 
             # Check if the file exists and if it does return its path
             if os.path.isfile(file_path):
