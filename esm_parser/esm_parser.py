@@ -1409,7 +1409,8 @@ def resolve_choose(model_with_choose, choose_key, config):
 
 
 def resolve_choose_with_var(
-    var, config, user_config={}, model_config={}, setup_config={}
+    var, config, current_model=None,
+    user_config={}, model_config={}, setup_config={}
 ):
     """
     Searches for a ``choose_`` block inside a model configuration ``config``, in which
@@ -1433,43 +1434,62 @@ def resolve_choose_with_var(
         Setup configuration, used to search for the selected case of the ``choose_``.
     """
 
+    sep = ","
     # Find the path to the variable ``var`` in the given ``config``, inside a
     # ``choose_``
-    choose_with_var = find_key(config, var, paths2finds=[])
+    choose_with_var = find_key(
+        config, var, exc_strings="add_", paths2finds=[], sep=sep
+    )
     choose_with_var = [x for x in choose_with_var if "choose_" in x]
-    # If the path is found
-    if choose_with_var:
-        # If ``var`` is in multiple ``choose_`` blocks return an error
-        if len(choose_with_var) > 1:
-            if choose_with_var[0] is not choose_with_var[1] or len(choose_with_var) > 2:
-                print("include_models in more than one choose_ block!")
-                sys.exit(-1)
-        # Get the first part of the path to the ``var``
-        choose_with_var = choose_with_var[0].split(".")[0]
-        # Get the key for the ``choose_``
-        choose_key = choose_with_var.replace("choose_", "")
-        # Name of the evaluated model
-        current_model = config.get("model")
-        # Find where the case for the ``choose_`` is defined, with priority: user ->
-        # setup -> model
-        config_to_search_into = None
-        if choose_key in user_config.get(current_model, []):
-            config_to_search_into = user_config.get(current_model)
-        elif choose_key in model_config.get(current_model, []):
-            config_to_search_into = model_config.get(current_model)
-        elif choose_key in setup_config.get(current_model, []):
-            config_to_search_into = setup_config.get(current_model)
-        # If the case was found
-        if config_to_search_into:
-            # Deep copy here avoids the other variables in the case to be updated now.
-            # We want to update now ONLY the ``var``.
-            config_copy = copy.deepcopy(config)
-            # Resolve the case
-            resolve_basic_choose(config_to_search_into, config_copy, choose_with_var)
-            # If ``var`` was defined through the resolution of the ``choose_``, add the
-            # ``var`` value to the ``config``.
-            if config_copy.get(var):
-                config[var] = config_copy.get(var)
+    # Find the path to the variable ``add_var`` in the given ``config``, inside a
+    # ``choose_``
+    choose_with_add_var = find_key(
+        config, f"add_{var}", paths2finds=[], sep=sep
+    )
+    choose_with_add_var = [x for x in choose_with_add_var if "choose_" in x]
+
+    for choose_with_var, lvar in [
+        (choose_with_var, var), (choose_with_add_var, f"add_{var}")
+    ]:
+        # If the path is found
+        if choose_with_var:
+            # If ``lvar`` is in multiple ``choose_`` blocks return an error
+            chooses = [sep.join(choose_with_var[0].split(sep)[:-2])]
+            for case in choose_with_var:
+                choose = sep.join(case.split(sep)[:-2])
+                if choose not in chooses:
+                    user_error(
+                        f'"{lvar}" in more than one choose_ block',
+                        choose_with_var
+                    )
+                chooses.append(choose)
+            # Get the first part of the path to the ``lvar``
+            choose_with_var = choose_with_var[0].split(sep)[0]
+            # Get the key for the ``choose_``
+            choose_key = choose_with_var.replace("choose_", "")
+            # Name of the evaluated model
+            if not current_model:
+                current_model = config.get("model")
+            # Find where the case for the ``choose_`` is defined, with priority: user ->
+            # setup -> model
+            config_to_search_into = None
+            if choose_key in user_config.get(current_model, []):
+                config_to_search_into = user_config.get(current_model)
+            elif choose_key in setup_config.get(current_model, []):
+                config_to_search_into = setup_config.get(current_model)
+            elif choose_key in model_config.get(current_model, []):
+                config_to_search_into = model_config.get(current_model)
+            # If the case was found
+            if config_to_search_into:
+                # Deep copy here avoids the other variables in the case to be updated
+                # now. We want to update now ONLY the ``lvar``.
+                config_copy = copy.deepcopy(config)
+                # Resolve the case
+                resolve_basic_choose(config_to_search_into, config_copy, choose_with_var)
+                # If ``var`` was defined through the resolution of the ``choose_``, add
+                # the ``var`` value to the ``config``.
+                if config_copy.get(var):
+                    config[var] = config_copy.get(var)
 
 
 def basic_add_more_important_tasks(choose_keyword, all_set_variables, task_list):
@@ -2628,6 +2648,7 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
             resolve_choose_with_var(
                 "include_models",
                 self.config["general"],
+                current_model="general",
                 user_config=user_config,
                 setup_config=setup_config,
             )
