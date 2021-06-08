@@ -51,16 +51,16 @@ class EsmConfigFileError(Exception):
 
 # This next part is stolen here:
 # https://medium.com/swlh/python-yaml-configuration-with-environment-variables-parsing-77930f4273ac
-# Deniz: unfortunately this example as well as the other examples and even 
-# PyYaml itself is bit buggy. Basically everything with ${VAR} passes through 
-# the pipeline and this ends up replacing anything with ${VAR} with VAR and 
-# export them as environmental variables. That propagates even further and 
-# messes up the rest of the esm_tools (eg. master, runscripts, ...). The fix 
+# Deniz: unfortunately this example as well as the other examples and even
+# PyYaml itself is bit buggy. Basically everything with ${VAR} passes through
+# the pipeline and this ends up replacing anything with ${VAR} with VAR and
+# export them as environmental variables. That propagates even further and
+# messes up the rest of the esm_tools (eg. master, runscripts, ...). The fix
 # below corrects that issue.
 def create_env_loader(tag="!ENV", loader=yaml.SafeLoader):
-    # pattern for ${VAR} and extract VAR 
+    # pattern for ${VAR} and extract VAR
     pattern_envvar = re.compile('\${(\w+)}')
-    
+
     # This pattern matches the valid (uncommented) !ENV lines. Eg.
     # - !ENV ${VAR}
     # - !ENV "${VAR}" or !ENV '${VAR}'
@@ -89,17 +89,17 @@ def create_env_loader(tag="!ENV", loader=yaml.SafeLoader):
         # For character index from the start of the file use node.start_mark.index
         column_start = node.start_mark.column
         column_end = node.end_mark.column
-        
-        # read the file into a list of line. This can also be achieved by 
+
+        # read the file into a list of line. This can also be achieved by
         # read() instead but since the YAML files are not large (max few KBs),
         # this is a quicked solution
         yaml_file = open(fname, 'r')
         file_lines = yaml_file.readlines()
         yaml_file.close()
-        
-        # current line without the newline at the end 
+
+        # current line without the newline at the end
         cur_line = file_lines[line_num].rstrip()
-        
+
         # Print extra debug messages if ESM_PARSER_DEBUG environment variable is set
         if os.getenv("ESM_PARSER_DEBUG"):
             print()
@@ -110,27 +110,27 @@ def create_env_loader(tag="!ENV", loader=yaml.SafeLoader):
             print(f"::: found the match: >>>{cur_line[column_start:column_end]}<<<")
             print("==================== END OF ESM_PARSER_DEBUG ===================")
             print()
-        
+
         value = loader.construct_scalar(node)
-        
+
         # Check if we have a valid !ENV tag on the line
         envtag_match = re.search(pattern_envtag, cur_line)
-        
+
         # list of matches for ${VAR}. Each match is VAR
-        envvar_matches = pattern_envvar.findall(value) 
+        envvar_matches = pattern_envvar.findall(value)
 
         # Parse the environmental variables only if the line has a valid !ENV tag
         if envtag_match:
-            if envvar_matches: 
+            if envvar_matches:
                 full_value = value
                 for env_var in envvar_matches:
 
                     # first check if the variable exists in the shell environment
-                    if not os.getenv(env_var): 
+                    if not os.getenv(env_var):
                         esm_parser.user_error(f"{env_var} is not defined",
                             f"{env_var} is not an environment variable. Exiting"
                         )
-                        
+
                     # replace {env_var} with the value of the env_var
                     full_value = full_value.replace(
                         f'${{{env_var}}}', os.getenv(env_var)
@@ -463,6 +463,9 @@ def check_duplicates(src):
         for key_node, value_node in node.value:
             key = loader.construct_object(key_node, deep=deep)
             value = loader.construct_object(value_node, deep=deep)
+
+            key.__line__ = key_node.start_mark.line + 1
+            value.__line__ = value_node.start_mark.line + 1
 
             if key in mapping:
                 esm_parser.user_error("Duplicated variables",
