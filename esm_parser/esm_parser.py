@@ -1414,10 +1414,10 @@ def resolve_choose_with_var(
 ):
     """
     Searches for a ``choose_`` block inside a model configuration ``config``, in which
-    ``var`` is defined, and then resolves ONLY the ``var`` (the other variables in the
-    ``choose_`` remain untouched). Needed, for example, for being able to use
-    ``include_models`` from a ``choose_`` before the general choose-resolve takes place
-    (i.e. include ``xios`` component from ``oifs.yaml`` using a ``choose_``).
+    ``var`` is defined, and then resolves ONLY the ``var`` and ``add_<var>`` (the other
+    variables in the ``choose_`` remain untouched). Needed, for example, for being able
+    to use ``include_models`` from a ``choose_`` before the general choose-resolve takes
+    place (i.e. include ``xios`` component from ``oifs.yaml`` using a ``choose_``).
 
     Parameters
     ----------
@@ -1448,6 +1448,7 @@ def resolve_choose_with_var(
     )
     choose_with_add_var = [x for x in choose_with_add_var if "choose_" in x]
 
+    # Resolve first for ``<var>`` and then for ``add_<var>``
     for choose_with_var, lvar in [
         (choose_with_var, var), (choose_with_add_var, f"add_{var}")
     ]:
