@@ -1465,6 +1465,15 @@ def recursive_run_function(tree, right, level, func, *args, **kwargs):
         def func(tree, right, *args, **kwargs)
 
     """
+
+    if len(tree) > 100:
+        print("Maximum recursion depth exceeded.")
+        print (tree)
+        print (func)
+        print (right)
+        sys.exit(-1)
+
+
     # logging.debug("Top of function")
     # logging.debug("tree=%s", tree)
     if level == "mappings":
