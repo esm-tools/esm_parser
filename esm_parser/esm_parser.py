@@ -110,15 +110,15 @@ DATE_MARKER = str(">>>THIS_IS_A_DATE<<<")
 import esm_rcfile
 
 
-FUNCTION_PATH = esm_rcfile.FUNCTION_PATH
+FUNCTION_PATH = esm_rcfile.EsmToolsDir("FUNCTION_PATH")
 SETUP_PATH = FUNCTION_PATH + "/setups"
 DEFAULTS_DIR = FUNCTION_PATH + "/defaults"
 COMPONENT_PATH = FUNCTION_PATH + "/components"
 
 
-esm_function_dir = esm_rcfile.FUNCTION_PATH
-esm_namelist_dir = esm_rcfile.get_rc_entry("NAMELIST_PATH", "NONE_YET")
-esm_runscript_dir = esm_rcfile.get_rc_entry("RUNSCRIPT_PATH", "NONE_YET")
+esm_function_dir = FUNCTION_PATH
+esm_namelist_dir = esm_rcfile.EsmToolsDir("NAMELIST_PATH")
+esm_runscript_dir = esm_rcfile.EsmToolsDir("RUNSCRIPT_PATH")
 
 gray_list = [
     r"choose_lresume",
@@ -144,34 +144,65 @@ if six.PY2:  # pragma: no cover
 
 
 def look_for_file(model, item):
-    for possible_path in [
-            SETUP_PATH + "/" + model + "/" + item  ,
-            COMPONENT_PATH + "/" + model + "/" + item ,
-            FUNCTION_PATH + "/esm_software/" + model + "/" + item,
-            FUNCTION_PATH + "/other_software/" + model + "/" + item,
-            FUNCTION_PATH + "/" + model + "/" + item ,
-            ]:
+    """
+    Finds the file containing the configuration of a component, model, coupled setup
+    or software included in `ESM-Tools`. The ``model`` input provides a general name,
+    normally the folder where all the versioned files of that component are contained.
+    The ``item`` input can contain information about the version. If the configuration
+    file is not found, ``item`` will be reduced one ``-`` back and ``look_for_file``
+    will be called recursively.
 
-        for ending in [
-                "",
-                ".yaml",
-                ".yml",
-                ".YAML",
-                ".YML",
-                ]:
+    Parameters
+    ----------
+    model : str
+        General name of the model, component, coupled setup or software.
+    item : str
+        Name of the component and the version needed.
 
-            if os.path.isfile(possible_path + ending):
+    Returns
+    -------
+    possible_path : str
+        Path to the configuration file.
+    needs_loading : bool
+        Boolean to indicate the need of loading the file.
+    """
+
+    # Loop through all possible path combinations
+    possible_paths = [ f"{SETUP_PATH}/{model}/{item}",
+        f"{COMPONENT_PATH}/{model}/{item}",
+        f"{FUNCTION_PATH}/esm_software/{model}/{item}",
+        f"{FUNCTION_PATH}/other_software/{model}/{item}",
+        f"{FUNCTION_PATH}/{model}/{item}",
+        f"{os.getcwd()}/{item}"
+    ]
+
+    endings = [ "", ".yaml", ".yml", ".YAML", ".YML" ]
+
+    for possible_path in possible_paths:
+
+        for ending in endings:
+            file_path = possible_path + ending
+
+            # Check if the file exists and if it does return its path
+            if os.path.isfile(file_path):
                 needs_loading = True
-                return possible_path + ending, needs_loading
-            if (possible_path + ending).startswith("NONE_YET"):
-                try:
-                    config = esm_tools.read_config_file(possible_path.replace("NONE_YET", "") + ending)
-                    needs_loading = False
-                    return config, needs_loading
-                except Exception as e:
-                    continue
-    return None, None
+                return file_path, needs_loading
 
+    # If the item is a subversion of a model version with its own file (e.g.
+    # item = fesom-2.0-jio and model = fesom), the previous lines won't be able
+    # to find the versioned file (e.g. fesom-2.0.yaml) cause it is looking for
+    # a file which name contains the whole item string (e.g. fesom-2.0-jio.yaml).
+    # To solve that kind of problem the item's name is reduced to the last "-"
+    # (e.g. to fesom-2.0) and then ``look_for_file`` is called recursively
+    new_item = "-".join(item.split('-')[:-1])
+    if len(new_item)>0:
+        possible_path, needs_loading = look_for_file(model, new_item)
+        if possible_path:
+            return possible_path, needs_loading
+
+    # The file was not found
+    warnings.warn(f'File for "{item}" not found in "{model}"')
+    return None, False
 
 
 def shell_file_to_dict(filepath):
@@ -261,8 +292,13 @@ def pprint_config(config):  # pragma: no cover
     -------
     None
     """
+    # Delete the ``prev_run`` chapter: we don't need to print the info from the
+    # previous run.
+    config_to_print = copy.deepcopy(config) #PrevRunInfo
+    if "prev_run" in config_to_print:       #PrevRunInfo
+        del config_to_print["prev_run"]     #PrevRunInfo
     yaml.Dumper.ignore_aliases = lambda *args: True
-    print(yaml.dump(config, default_flow_style=False))
+    print(yaml.dump(config_to_print, default_flow_style=False))
 
 
 def attach_to_config_and_reduce_keyword(
@@ -567,18 +603,105 @@ def dict_merge(dct, merge_dct):
 
 
 def deep_update(chapter, entries, config, blackdict={}):
-     if "remove_" in chapter:
-        remove_chapter = chapter.replace("remove_", "")
-        remove_entries_from_chapter(config, remove_chapter, entries)
-        #del config[chapter]
-
-     elif "add_" in chapter:
+     if "add_" in chapter:
         add_chapter = chapter.replace("add_", "")
         add_entries_from_chapter(config, add_chapter, entries)
         #del config[chapter]
      else:
         if chapter not in blackdict:
             dict_merge(config, {chapter: entries})
+     
+        # deniz: bugfix: choose_ blocks with "*" keys don't get updated. Eg. 
+        # mail1 and mail2 don't get updated since they are initialized as empty
+        # strings and are already inside. Current bug fix only correct scalar
+        # types such as strings.  
+        else:
+            empty_values = ["", None]  # some possible empty values to override
+
+            # strip all whitespace. Eg. "  " -> "", if it is only space
+            if (isinstance(blackdict[chapter], str) and 
+                blackdict[chapter].isspace()):
+                blackdict[chapter] = re.sub(r"\s+", "", blackdict[chapter])
+
+            # The update_key (chapter) is already inside the blackdict however,
+            # its value (entries) it not empty. So, update them 
+            if (blackdict[chapter] in empty_values and entries not in 
+                empty_values):
+                dict_merge(config, {chapter: entries})
+                
+                
+def dict_overwrite(sender, receiver, key_path=[], recursion_level=0, verbose=False):
+    """Recursively search through the dictionary and replace the keys with the
+    ``overwrite`` tag
+
+    Parameters
+    ----------
+    sender : dict
+        contains the information with the key 'overwrite' to replace the
+        information in the receiver dictionary.
+    receiver : dict
+        contains the information that will be replaced by the sender dictionary.
+    key_path : list
+        used only in the recursive call. Contains the nested dictionary structure.
+    recursion_level : int
+        used only in the recursive call. Stores the value of the recursion depth.
+    verbose : bool
+        if True then the function will print the before/after information
+
+    Returns
+    -------
+    receiver : dict
+        The input argument is overwritten
+    """
+    # iterate over the sender dictionary and enter recursively search for the
+    # boolean key "overwrite". It is assumed that 'key' is also present in the
+    # receiver
+    for key in sender:
+        # clear the key_path upon first entry or new entry after recursion
+        if recursion_level == 0:
+            key_path.clear()
+        else:
+            # len(key_path) is recursion_level. Only take up to the current
+            # recursion level to prevent unnecessary appends
+            key_path = key_path[: recursion_level]
+
+        key_path.append(key)
+
+        if isinstance(receiver.get(key, None), dict):
+            # check if there is "overwrite" key whose value is True
+            if sender[key].get('overwrite', False):
+                del sender[key]['overwrite']     # clean up
+                value_before = copy.deepcopy(receiver[key])
+
+                # update (overwrite) the value in the receiving dictionary
+                receiver[key] = copy.deepcopy(sender[key])
+
+                # print the changed section
+                if verbose:
+                    space = "    "
+                    path_str = ' -> '.join(key_path)
+                    print(f"::: Overwriting the path:    [{path_str}]")
+                    print("::: value before:")
+                    before_str = f"{space}{yaml.dump(value_before, indent=4)}"
+                    before_str = before_str.replace('\n', f'\n{space}')
+                    before_str = re.sub(r'\n[ \t]*$', '', before_str)
+                    print(before_str)
+                    print("---")
+                    
+                    print("::: value after:")
+                    after_str = f"{space}{yaml.dump(receiver[key], indent=4)}"
+                    after_str = after_str.replace('\n', f'\n{space}')
+                    after_str = re.sub(r'\n[ \t]*$', '', after_str)
+                    print(after_str)
+                    print()
+            else:
+                # enter into recursion using the current dictionary values. Keep
+                # track of the recursion path and depth
+                dict_overwrite(sender[key], receiver[key], key_path=key_path,
+                    recursion_level=recursion_level+1, verbose=verbose)
+
+    return receiver                
+                
 
 
 def find_remove_entries_in_config(mapping, model_name, models = []):
@@ -656,7 +779,7 @@ def remove_entry_from_chapter(
     """
 
     logging.debug("%s, %s", remove_entries, remove_chapter)
-    # Check that the the user entry is a least, if not rise an exception
+    # Check that the the user entry is a list, if not rise an exception
     if not isinstance(remove_entries, list):
         raise TypeError("Please put all entries to remove as a list")
     # Check for ``namelist_changes`` and change the extension dot ``.`` for a ``,``
@@ -1235,6 +1358,9 @@ def resolve_basic_choose(config, config_to_replace_in, choose_key, blackdict={})
             #del config_to_replace_in[choose_key]
             gray_list.append(re.compile(choose_key))
             return
+    # Evaluates the mathematical expressions in the choose_ blocks
+    if isinstance(choice, str) and "$((" in choice:
+        choice = do_math_in_entry([False], choice, config)
     logging.debug(choice)
 
     if choice in config_to_replace_in.get(choose_key):
@@ -1283,14 +1409,15 @@ def resolve_choose(model_with_choose, choose_key, config):
 
 
 def resolve_choose_with_var(
-    var, config, user_config={}, model_config={}, setup_config={}
+    var, config, current_model=None,
+    user_config={}, model_config={}, setup_config={}
 ):
     """
     Searches for a ``choose_`` block inside a model configuration ``config``, in which
-    ``var`` is defined, and then resolves ONLY the ``var`` (the other variables in the
-    ``choose_`` remain untouched). Needed, for example, for being able to use
-    ``include_models`` from a ``choose_`` before the general choose-resolve takes place
-    (i.e. include ``xios`` component from ``oifs.yaml`` using a ``choose_``).
+    ``var`` is defined, and then resolves ONLY the ``var`` and ``add_<var>`` (the other
+    variables in the ``choose_`` remain untouched). Needed, for example, for being able
+    to use ``include_models`` from a ``choose_`` before the general choose-resolve takes
+    place (i.e. include ``xios`` component from ``oifs.yaml`` using a ``choose_``).
 
     Parameters
     ----------
@@ -1307,43 +1434,63 @@ def resolve_choose_with_var(
         Setup configuration, used to search for the selected case of the ``choose_``.
     """
 
+    sep = ","
     # Find the path to the variable ``var`` in the given ``config``, inside a
     # ``choose_``
-    choose_with_var = find_key(config, var, paths2finds=[])
+    choose_with_var = find_key(
+        config, var, exc_strings="add_", paths2finds=[], sep=sep
+    )
     choose_with_var = [x for x in choose_with_var if "choose_" in x]
-    # If the path is found
-    if choose_with_var:
-        # If ``var`` is in multiple ``choose_`` blocks return an error
-        if len(choose_with_var) > 1:
-            if choose_with_var[0] is not choose_with_var[1] or len(choose_with_var) > 2:
-                print("include_models in more than one choose_ block!")
-                sys.exit(-1)
-        # Get the first part of the path to the ``var``
-        choose_with_var = choose_with_var[0].split(".")[0]
-        # Get the key for the ``choose_``
-        choose_key = choose_with_var.replace("choose_", "")
-        # Name of the evaluated model
-        current_model = config.get("model")
-        # Find where the case for the ``choose_`` is defined, with priority: user ->
-        # setup -> model
-        config_to_search_into = None
-        if choose_key in user_config.get(current_model, []):
-            config_to_search_into = user_config.get(current_model)
-        elif choose_key in model_config.get(current_model, []):
-            config_to_search_into = model_config.get(current_model)
-        elif choose_key in setup_config.get(current_model, []):
-            config_to_search_into = setup_config.get(current_model)
-        # If the case was found
-        if config_to_search_into:
-            # Deep copy here avoids the other variables in the case to be updated now.
-            # We want to update now ONLY the ``var``.
-            config_copy = copy.deepcopy(config)
-            # Resolve the case
-            resolve_basic_choose(config_to_search_into, config_copy, choose_with_var)
-            # If ``var`` was defined through the resolution of the ``choose_``, add the
-            # ``var`` value to the ``config``.
-            if config_copy.get(var):
-                config[var] = config_copy.get(var)
+    # Find the path to the variable ``add_var`` in the given ``config``, inside a
+    # ``choose_``
+    choose_with_add_var = find_key(
+        config, f"add_{var}", paths2finds=[], sep=sep
+    )
+    choose_with_add_var = [x for x in choose_with_add_var if "choose_" in x]
+
+    # Resolve first for ``<var>`` and then for ``add_<var>``
+    for choose_with_var, lvar in [
+        (choose_with_var, var), (choose_with_add_var, f"add_{var}")
+    ]:
+        # If the path is found
+        if choose_with_var:
+            # If ``lvar`` is in multiple ``choose_`` blocks return an error
+            chooses = [sep.join(choose_with_var[0].split(sep)[:-2])]
+            for case in choose_with_var:
+                choose = sep.join(case.split(sep)[:-2])
+                if choose not in chooses:
+                    user_error(
+                        f'"{lvar}" in more than one choose_ block',
+                        choose_with_var
+                    )
+                chooses.append(choose)
+            # Get the first part of the path to the ``lvar``
+            choose_with_var = choose_with_var[0].split(sep)[0]
+            # Get the key for the ``choose_``
+            choose_key = choose_with_var.replace("choose_", "")
+            # Name of the evaluated model
+            if not current_model:
+                current_model = config.get("model")
+            # Find where the case for the ``choose_`` is defined, with priority: user ->
+            # setup -> model
+            config_to_search_into = None
+            if choose_key in user_config.get(current_model, []):
+                config_to_search_into = user_config.get(current_model)
+            elif choose_key in setup_config.get(current_model, []):
+                config_to_search_into = setup_config.get(current_model)
+            elif choose_key in model_config.get(current_model, []):
+                config_to_search_into = model_config.get(current_model)
+            # If the case was found
+            if config_to_search_into:
+                # Deep copy here avoids the other variables in the case to be updated
+                # now. We want to update now ONLY the ``lvar``.
+                config_copy = copy.deepcopy(config)
+                # Resolve the case
+                resolve_basic_choose(config_to_search_into, config_copy, choose_with_var)
+                # If ``var`` was defined through the resolution of the ``choose_``, add
+                # the ``var`` value to the ``config``.
+                if config_copy.get(var):
+                    config[var] = config_copy.get(var)
 
 
 def basic_add_more_important_tasks(choose_keyword, all_set_variables, task_list):
@@ -1557,6 +1704,10 @@ def recursive_run_function(tree, right, level, func, *args, **kwargs):
     elif isinstance(right, dict):
         keys = list(right)
         for key in keys:
+            # Avoid doing this for ``prev_run`` chapters, this is not needed as the
+            # previous config is already resolved
+            if key == "prev_run": #PrevRunInfo
+                continue          #PrevRunInfo
             value = right[key]
             right[key] = recursive_run_function(
                 tree + [key], value, level, func, *args, **kwargs
@@ -1930,11 +2081,7 @@ def determine_computer_from_hostname():
     str
         A string for the path of the computer specific yaml file.
     """
-    # FIXME: This needs to be a resource file at some point
-    if FUNCTION_PATH.startswith("NONE_YET"):
-        all_computers = esm_tools.read_config_file("machines/all_machines.yaml")
-    else:
-        all_computers = yaml_file_to_dict(FUNCTION_PATH + "/machines/all_machines.yaml")
+    all_computers = yaml_file_to_dict(FUNCTION_PATH + "/machines/all_machines.yaml")
     for this_computer in all_computers:
         for computer_pattern in all_computers[this_computer].values():
             if isinstance(computer_pattern, str):
@@ -2485,23 +2632,15 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
             user_config["defaults"] = {}
 
         default_infos = {}
-        if not DEFAULTS_DIR.startswith("NONE_YET"):
-            for i in os.listdir(DEFAULTS_DIR):
-                file_contents = yaml_file_to_dict(DEFAULTS_DIR + "/" + i)
-                default_infos.update(file_contents)
-        else:
-            for i in esm_tools.list_config_dir(DEFAULTS_DIR.replace("NONE_YET/", "")):
-                file_contents = esm_tools.read_config_file(DEFAULTS_DIR.replace("NONE_YET/", "")+"/"+i)
-                default_infos.update(file_contents)
+        for i in os.listdir(DEFAULTS_DIR):
+            file_contents = yaml_file_to_dict(DEFAULTS_DIR + "/" + i)
+            default_infos.update(file_contents)
 
 
         user_config["defaults"].update(default_infos)
 
         computer_file = determine_computer_from_hostname()
-        if computer_file.startswith("NONE_YET"):
-            computer_config = esm_tools.read_config_file(computer_file.replace("NONE_YET/", ""))
-        else:
-            computer_config = yaml_file_to_dict(computer_file)
+        computer_config = yaml_file_to_dict(computer_file)
         setup_config = {
             "computer": computer_config,
             "general": {},
@@ -2517,6 +2656,14 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
 
         if "general" in self.config and "coupled_setup" in self.config["general"]:
             setup_config["general"].update({"standalone": False})
+            # Resolve choose with include_models
+            resolve_choose_with_var(
+                "include_models",
+                self.config["general"],
+                current_model="general",
+                user_config=user_config,
+                setup_config=setup_config,
+            )
             setup_config["general"]["include_models"] = self.config["general"][
                 "include_models"
             ]
@@ -2538,7 +2685,7 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
             setup_config["general"].update({"standalone": True})
             setup_config["general"].update({"models": [self.config["model"]]})
 
-            # Resolve choose with include_models (Miguel)
+            # Resolve choose with include_models
             resolve_choose_with_var(
                 "include_models",
                 self.config,
@@ -2615,6 +2762,11 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
                 for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
                     attach_to_config_and_remove(model_config[model], attachment)
 
+        # Allows the ``general`` section to be able to handle attachable files (e.g.
+        # ``further_reading``)
+        for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
+            attach_to_config_and_remove(setup_config["general"], attachment)
+
         #if "models" in setup_config["general"]:
         #    new_model_list = []
         #    for model in setup_config["general"]["models"]:
@@ -2639,6 +2791,16 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
         if not "coupled_setup" in self.config["general"]:
             self._blackdict = blackdict = user_config
 
+        
+        # deniz: if the user-defined forcing_sources (inside the runscript) is
+        # a dictionary with multiple levels then the users need to provide
+        # 'overwrite' key at the level that they want to change. Otherwise,
+        # the parser basically appends that to the forcing_sources and since
+        # Python dictionaries are unordered noone can guarantee which source is
+        # taken
+        self.config = dict_overwrite(sender=user_config, receiver=self.config, 
+            key_path=[], verbose=self.config['general'].get('verbose', False))
+        
         #pprint_config(self.config)
         #sys.exit(0)
 
