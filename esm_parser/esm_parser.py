@@ -143,7 +143,7 @@ if six.PY2:  # pragma: no cover
     FileNotFoundError = IOError
 
 
-def look_for_file(model, item):
+def look_for_file(model, item, all_config=None):
     """
     Finds the file containing the configuration of a component, model, coupled setup
     or software included in `ESM-Tools`. The ``model`` input provides a general name,
@@ -158,6 +158,8 @@ def look_for_file(model, item):
         General name of the model, component, coupled setup or software.
     item : str
         Name of the component and the version needed.
+    all_config : dict
+        main configuration
 
     Returns
     -------
@@ -166,16 +168,22 @@ def look_for_file(model, item):
     needs_loading : bool
         Boolean to indicate the need of loading the file.
     """
-
+    # look at the directory where yaml runscript is found. This is an absolute
+    # path
+    runscript_path = ""
+    if all_config and all_config['general'].get('runscript_abspath'):
+        runscript_path = os.path.dirname(all_config['general']['runscript_abspath'])
+        
     # Loop through all possible path combinations
     possible_paths = [ f"{SETUP_PATH}/{model}/{item}",
         f"{COMPONENT_PATH}/{model}/{item}",
         f"{FUNCTION_PATH}/esm_software/{model}/{item}",
         f"{FUNCTION_PATH}/other_software/{model}/{item}",
         f"{FUNCTION_PATH}/{model}/{item}",
-        f"{os.getcwd()}/{item}"
+        f"{runscript_path}/{item}",
+        f"{os.getcwd()}/{item}", # last resort: look at the CWD if others fail 
     ]
-
+        
     endings = [ "", ".yaml", ".yml", ".YAML", ".YML" ]
 
     for possible_path in possible_paths:
@@ -238,6 +246,12 @@ def initialize_from_yaml(filepath):
     for file_ending in YAML_AUTO_EXTENSIONS:
         if filepath.endswith(file_ending) and not file_ending == "":
             user_config = yaml_file_to_dict(filepath)
+            
+            if not "general" in user_config:
+                user_config['general'] = {}
+            # full absolute path of the user runscript including the yaml file
+            user_config['general']['runscript_abspath'] = filepath
+            
             user_config = complete_config(user_config)
     return user_config
 
@@ -246,8 +260,6 @@ def complete_config(user_config):
     if not "general" in user_config:
         user_config["general"] = {}
     user_config["general"]["additional_files"] = []
-
-
 
     while True:
         for model in list(user_config):
@@ -260,12 +272,15 @@ def complete_config(user_config):
                     additional_file = user_config[model]["further_reading"]
                     if not additional_file in user_config["general"]["additional_files"]:
                         user_config["general"]["additional_files"].append(additional_file)
+
                 if model == "general":
                     user_config["further_reading"] = user_config["general"]["further_reading"]
                     del user_config["general"]["further_reading"]
-                    attach_to_config_and_remove(user_config, "further_reading")
+                    attach_to_config_and_remove(user_config, "further_reading",
+                        all_config=user_config)
                 else:
-                    attach_to_config_and_remove(user_config[model], "further_reading")
+                    attach_to_config_and_remove(user_config[model], 
+                        "further_reading", all_config=user_config)
 
         found = False
         for model in user_config:
@@ -407,21 +422,28 @@ def attach_to_config_and_reduce_keyword(
                     logger.debug("Attaching: %s", attachment)
                     attach_to_config_and_remove(
                         config_to_write_to[tmp_config["model"]],
-                        attachment,
-                    )
+                        attachment, all_config = None)
 
         else:
             raise TypeError("The entries in %s must be a list!!" % full_keyword)
         del config_to_read_from[full_keyword]
 
 
-def attach_single_config(config, path, attach_value):
-    include_path, needs_load = look_for_file(path, attach_value)
+def attach_single_config(config, path, attach_value, all_config=None):
+    """
+    Parameters
+    ----------
+    config : dict
+        subset of the main configuration, eg. config[model]
+    
+    all_config : dict
+        main configuration
+    """
+    include_path, needs_load = look_for_file(path, attach_value, 
+        all_config=all_config)
     if include_path:
         if needs_load:
-            attachable_config = yaml_file_to_dict(
-                    include_path
-            )
+            attachable_config = yaml_file_to_dict(include_path)
         else:
             attachable_config = include_path
     elif os.path.isfile(path + "/" + attach_value):
@@ -436,7 +458,7 @@ def attach_single_config(config, path, attach_value):
     #config.update(attachable_config)
 
 
-def attach_to_config_and_remove(config, attach_key):
+def attach_to_config_and_remove(config, attach_key, all_config=None):
     """
     Attaches extra dict to this one and removes the chapter
 
@@ -465,7 +487,7 @@ def attach_to_config_and_remove(config, attach_key):
                 attach_path, attach_value = attach_value.rsplit("/", 1)
             except ValueError:
                 attach_path = "."
-            attach_single_config(config, attach_path, attach_value)
+            attach_single_config(config, attach_path, attach_value, all_config=all_config)
 
 
 priority_marker = ">>THIS_ONE<<"
@@ -2595,7 +2617,7 @@ class GeneralConfig(dict):  # pragma: no cover
         else:
             self.config = include_path
         for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
-            attach_to_config_and_remove(self.config, attachment)
+            attach_to_config_and_remove(self.config, attachment, all_config=None)
 
         self._config_init(user_config)
         for k, v in six.iteritems(self.config):
@@ -2635,7 +2657,8 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
             "general": {},
         }
         for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
-            attach_to_config_and_remove(setup_config["computer"], attachment)
+            attach_to_config_and_remove(setup_config["computer"], attachment,
+                all_config = None)
         # Add the fake "model" name to the computer:
         setup_config["computer"]["model"] = "computer"
         logger.info("setup config is being updated with setup_relevant_configs")
@@ -2749,12 +2772,14 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
                     )
             for model in list(model_config):
                 for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
-                    attach_to_config_and_remove(model_config[model], attachment)
+                    attach_to_config_and_remove(model_config[model], attachment,
+                        all_config = None)
 
         # Allows the ``general`` section to be able to handle attachable files (e.g.
         # ``further_reading``)
         for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
-            attach_to_config_and_remove(setup_config["general"], attachment)
+            attach_to_config_and_remove(setup_config["general"], attachment,
+                all_config = None)
 
         #if "models" in setup_config["general"]:
         #    new_model_list = []
