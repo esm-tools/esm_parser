@@ -77,6 +77,7 @@ import numpy
 
 # Third-Party Imports
 import coloredlogs
+import colorama
 import yaml
 import six
 
@@ -646,12 +647,12 @@ def deep_update(chapter, entries, config, blackdict={}):
                 blackdict[chapter] = re.sub(r"\s+", "", blackdict[chapter])
 
             # The update_key (chapter) is already inside the blackdict however,
-            # its value (entries) it not empty. So, update them 
-            if (blackdict[chapter] in empty_values and entries not in 
+            # its value (entries) it not empty. So, update them
+            if (blackdict[chapter] in empty_values and entries not in
                 empty_values):
                 dict_merge(config, {chapter: entries})
-                
-                
+
+
 def dict_overwrite(sender, receiver, key_path=[], recursion_level=0, verbose=False):
     """Recursively search through the dictionary and replace the keys with the
     ``overwrite`` tag
@@ -709,7 +710,7 @@ def dict_overwrite(sender, receiver, key_path=[], recursion_level=0, verbose=Fal
                     before_str = re.sub(r'\n[ \t]*$', '', before_str)
                     print(before_str)
                     print("---")
-                    
+
                     print("::: value after:")
                     after_str = f"{space}{yaml.dump(receiver[key], indent=4)}"
                     after_str = after_str.replace('\n', f'\n{space}')
@@ -722,8 +723,8 @@ def dict_overwrite(sender, receiver, key_path=[], recursion_level=0, verbose=Fal
                 dict_overwrite(sender[key], receiver[key], key_path=key_path,
                     recursion_level=recursion_level+1, verbose=verbose)
 
-    return receiver                
-                
+    return receiver
+
 
 
 def find_remove_entries_in_config(mapping, model_name, models = []):
@@ -1885,9 +1886,23 @@ def actually_find_variable(tree, rhs, full_config):
             var_result = recursive_get(full_config, config_elements)
             # return var_result
         except:
-            raise EsmParserError("Sorry, a variable was not resolved: %s not found" % (rhs))
+            var_missing_errors(tree, rhs, full_config)
 
     return var_result, var_attr
+
+
+def var_missing_errors(tree, rhs, full_config):
+    if rhs == "general.account":
+        user_error(
+            "Missing account info",
+            f"You cannot run simulations in '{full_config['computer']['name']}' " \
+            "without providing an 'account' variable in the 'general' section, whose " \
+            "value refers to the project where the computing resources are to be " \
+            "taken from. Please, add the following to your runscript:\n\n" \
+            "general:\n\taccout: <the_account_to_be_used>"
+        )
+    else:
+        raise EsmParserError("Sorry, a variable was not resolved: %s not found" % (rhs))
 
 
 def list_to_multikey(tree, rhs, config_to_search, ignore_list, isblacklist):
@@ -2557,7 +2572,7 @@ def find_key(d_search, k_search, exc_strings = "", level = "", paths2finds = [],
     return paths2finds
 
 
-def user_note(note_heading, note_text):
+def user_note(note_heading, note_text, color=colorama.Fore.YELLOW):
     """
     Notify the user about something. In the future this should also write in the log.
 
@@ -2568,8 +2583,8 @@ def user_note(note_heading, note_text):
     text : str
         Text clarifying the note.
     """
-    print("\n" + note_heading + "\n" + "-" * len(note_heading) + "\n")
-    print(note_text)
+    print(f"\n{color}{note_heading}\n{'-' * len(note_heading)}")
+    print(f"{colorama.Style.RESET_ALL}{note_text}\n")
 
 
 def user_error(error_type, error_text, exit_code=1):
@@ -2586,7 +2601,7 @@ def user_error(error_type, error_text, exit_code=1):
         The exit code to send back to the parent process (default to 1)
     """
     error_title = "ERROR: " + error_type
-    user_note(error_title, error_text)
+    user_note(error_title, error_text, color=colorama.Fore.RED)
     sys.exit(exit_code)
 
 
