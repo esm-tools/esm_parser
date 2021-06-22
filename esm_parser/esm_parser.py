@@ -1886,23 +1886,9 @@ def actually_find_variable(tree, rhs, full_config):
             var_result = recursive_get(full_config, config_elements)
             # return var_result
         except:
-            var_missing_errors(tree, rhs, full_config)
+            raise EsmParserError("Sorry, a variable was not resolved: %s not found" % (rhs))
 
     return var_result, var_attr
-
-
-def var_missing_errors(tree, rhs, full_config):
-    if rhs == "general.account":
-        user_error(
-            "Missing account info",
-            f"You cannot run simulations in '{full_config['computer']['name']}' " \
-            "without providing an 'account' variable in the 'general' section, whose " \
-            "value refers to the project where the computing resources are to be " \
-            "taken from. Please, add the following to your runscript:\n\n" \
-            "general:\n\taccout: <the_account_to_be_used>"
-        )
-    else:
-        raise EsmParserError("Sorry, a variable was not resolved: %s not found" % (rhs))
 
 
 def list_to_multikey(tree, rhs, config_to_search, ignore_list, isblacklist):
@@ -2583,8 +2569,9 @@ def user_note(note_heading, note_text, color=colorama.Fore.YELLOW):
     text : str
         Text clarifying the note.
     """
+    colorama.init(autoreset=True)
     print(f"\n{color}{note_heading}\n{'-' * len(note_heading)}")
-    print(f"{colorama.Style.RESET_ALL}{note_text}\n")
+    print(f"{note_text}\n")
 
 
 def user_error(error_type, error_text, exit_code=1):
