@@ -12,6 +12,7 @@ with open('HISTORY.rst') as history_file:
 
 requirements = ["pyyaml>=5.1",
                 "coloredlogs",
+                "colorama",
                 "six",
                 "loguru",
                 "numpy",  # NOTE(PG): Numpy is needed for VILMA? Do we need a specific version?
@@ -54,6 +55,6 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     url='https://gitlab.awi.de/esm_tools/esm_parser',
-    version="5.1.6",
+    version="5.1.7",
     zip_safe=False,
 )
