@@ -168,6 +168,17 @@ def look_for_file(model, item, all_config=None):
     needs_loading : bool
         Boolean to indicate the need of loading the file.
     """
+    
+
+    # first check if model/item (path/file, from `attach_to_config_and_remove` is a
+    # valid path. Return immediately if it is found
+    # In this case `model` is a path, eg. /home/foo/runscript, and item is a 
+    # yaml file, eg. bar.yaml
+    file_path = os.path.join(model, item)
+    if os.path.isfile(file_path):
+        needs_loading = True
+        return file_path, needs_loading
+
     # look at the directory where yaml runscript is found. This is an absolute
     # path
     runscript_path = ""
@@ -282,6 +293,7 @@ def complete_config(user_config):
                     attach_to_config_and_remove(user_config[model], 
                         "further_reading", all_config=user_config)
 
+        # Deniz: what is the meaning of these lines. I don't get the logic
         found = False
         for model in user_config:
             if "further_reading" in user_config[model]:
@@ -480,13 +492,36 @@ def attach_to_config_and_remove(config, attach_key, all_config=None):
     if attach_key in config:
         attach_value = config[attach_key]
         del config[attach_key]
+
         if type(attach_value) == str:
-            attach_value = [attach_value]
-        for attach_value in attach_value:
-            try:
-                attach_path, attach_value = attach_value.rsplit("/", 1)
-            except ValueError:
-                attach_path = "."
+            attach_values = [attach_value]
+        elif isinstance(attach_value, list):
+            attach_values = copy.deepcopy(attach_value)
+        else:
+            raise TypeError(f"Unknown type for the variable: {attach_value}")
+
+        for item in attach_values:
+            # case 1: file is found in the given path
+            if os.path.isfile(item):
+                fullpath = os.path.realpath(item)
+                attach_path, attach_value = os.path.split(fullpath)
+            # case 2: file is similar to syntax given in the configuration files
+            # many model yaml files contain things like:
+            # further_reading:
+            #     - echam/echam.datasets.yaml
+            # or 
+            # further_reading:
+            #     - batch_system/slurm.yaml
+            elif '/' in item:
+                # ie. path will be batch_system and value will be slurm.yaml
+                attach_path, attach_value = item.split('/')
+            
+            # simplest form. Eg.
+            # further_reading: foo.yaml
+            else:
+                attach_path = ''
+                attach_value = item
+
             attach_single_config(config, attach_path, attach_value, all_config=all_config)
 
 
