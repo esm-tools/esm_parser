@@ -77,6 +77,7 @@ import numpy
 
 # Third-Party Imports
 import coloredlogs
+import colorama
 import yaml
 import six
 
@@ -728,7 +729,7 @@ def dict_overwrite(sender, receiver, key_path=[], recursion_level=0, verbose=Fal
                     before_str = re.sub(r'\n[ \t]*$', '', before_str)
                     print(before_str)
                     print("---")
-                    
+
                     print("::: value after:")
                     after_str = f"{space}{yaml.dump(receiver[key], indent=4)}"
                     after_str = after_str.replace('\n', f'\n{space}')
@@ -741,8 +742,8 @@ def dict_overwrite(sender, receiver, key_path=[], recursion_level=0, verbose=Fal
                 dict_overwrite(sender[key], receiver[key], key_path=key_path,
                     recursion_level=recursion_level+1, verbose=verbose)
 
-    return receiver                
-                
+    return receiver
+
 
 
 def find_remove_entries_in_config(mapping, model_name, models = []):
@@ -2576,7 +2577,7 @@ def find_key(d_search, k_search, exc_strings = "", level = "", paths2finds = [],
     return paths2finds
 
 
-def user_note(note_heading, note_text):
+def user_note(note_heading, note_text, color=colorama.Fore.YELLOW):
     """
     Notify the user about something. In the future this should also write in the log.
 
@@ -2587,8 +2588,9 @@ def user_note(note_heading, note_text):
     text : str
         Text clarifying the note.
     """
-    print("\n" + note_heading + "\n" + "-" * len(note_heading) + "\n")
-    print(note_text)
+    colorama.init(autoreset=True)
+    print(f"\n{color}{note_heading}\n{'-' * len(note_heading)}")
+    print(f"{note_text}\n")
 
 
 def user_error(error_type, error_text, exit_code=1):
@@ -2605,7 +2607,7 @@ def user_error(error_type, error_text, exit_code=1):
         The exit code to send back to the parent process (default to 1)
     """
     error_title = "ERROR: " + error_type
-    user_note(error_title, error_text)
+    user_note(error_title, error_text, color=colorama.Fore.RED)
     sys.exit(exit_code)
 
 
