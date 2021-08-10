@@ -621,6 +621,14 @@ def dict_merge(dct, merge_dct):
                         dct["debug_info"]["loaded_from_file"] = [dct["debug_info"]["loaded_from_file"]]
                     else:
                         dct["debug_info"]["loaded_from_file"].append(merge_dct["debug_info"]["loaded_from_file"])
+        # If the key exists and starts by ``add_``, it is a nested ``add_`` and is
+        # solved as such
+        elif (
+            isinstance(k, str)
+            and k.startswith("add_")
+            and isinstance(v, (list, dict))
+        ):
+            add_entries_from_chapter(dct, "".join(k.split("add_")), v)
         else:
             dct[k] = merge_dct[k]
 
@@ -651,6 +659,17 @@ def deep_update(chapter, entries, config, blackdict={}):
             if (blackdict[chapter] in empty_values and entries not in
                 empty_values):
                 dict_merge(config, {chapter: entries})
+
+            # Trying to update a dictionary from the same file (in blackdict)
+            # an ``add_`` returns an error
+            if isinstance(blackdict[chapter], dict):
+                user_error(
+                    "Missing 'add_'", (
+                        f"Not possible to update the '{config['model']}.{chapter}' "
+                        + f"dictionary. Please, use 'add_{chapter}' inside the "
+                        + f"'choose_' block, instead of just '{chapter}'."
+                    )
+                )
 
 
 def dict_overwrite(sender, receiver, key_path=[], recursion_level=0, verbose=False):
