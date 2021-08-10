@@ -626,7 +626,9 @@ def dict_merge(dct, merge_dct):
         elif (
             isinstance(k, str)
             and k.startswith("add_")
-            and isinstance(v, (list, dict))
+            and "module_actions" not in k
+            and "export_vars" not in k
+            and isinstance(v, (list))
         ):
             add_entries_from_chapter(dct, "".join(k.split("add_")), v)
         else:
