@@ -578,7 +578,7 @@ def new_deep_update(receiving_dict, dict_to_be_included, winner = "receiving", b
 
 
 
-def dict_merge(dct, merge_dct):
+def dict_merge(dct, merge_dct, resolve_nested_adds=False):
     """ Recursive dict merge. Inspired by :meth:``dict.update()``, instead of
     updating only top-level keys, dict_merge recurses down into dicts nested
     to an arbitrary depth, updating keys. The ``merge_dct`` is merged into
@@ -621,14 +621,18 @@ def dict_merge(dct, merge_dct):
                         dct["debug_info"]["loaded_from_file"] = [dct["debug_info"]["loaded_from_file"]]
                     else:
                         dct["debug_info"]["loaded_from_file"].append(merge_dct["debug_info"]["loaded_from_file"])
+        # MA: I'm not super happy about the resolve_nested_adds implementation. Nested
+        # adds should probably resolved in a different place, after the first level
+        # ones are resolved.
         # If the key exists and starts by ``add_``, it is a nested ``add_`` and is
         # solved as such
         elif (
-            isinstance(k, str)
+            resolve_nested_adds
+            and isinstance(k, str)
             and k.startswith("add_")
             and "module_actions" not in k
             and "export_vars" not in k
-            and isinstance(v, (list))
+            and isinstance(v, (list, dict))
         ):
             add_entries_from_chapter(dct, "".join(k.split("add_")), v)
         else:
@@ -785,7 +789,8 @@ def add_entries_from_chapter(config, add_chapter, add_entries):
             for entry in my_entries:
                 config[add_chapter].append(entry)
         elif type(config[add_chapter]) == dict:
-            dict_merge(config[add_chapter], add_entries)
+            # MA: I'm not supper happy about the resolve_nested_adds implementation
+            dict_merge(config[add_chapter], add_entries, resolve_nested_adds=True)
     else:
         config[add_chapter] = add_entries
 
