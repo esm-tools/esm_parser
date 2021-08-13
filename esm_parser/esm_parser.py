@@ -139,6 +139,8 @@ constant_blacklist = [r"PATH", r"LD_LIBRARY_PATH", r"NETCDFF_ROOT", r"I_MPI_ROOT
 
 constant_blacklist = [re.compile(entry) for entry in constant_blacklist]
 
+protected_adds = ["add_module_actions", "add_export_vars", "add_unset_vars"]
+
 # Ensure FileNotFoundError exists:
 if six.PY2:  # pragma: no cover
     FileNotFoundError = IOError
@@ -630,8 +632,7 @@ def dict_merge(dct, merge_dct, resolve_nested_adds=False):
             resolve_nested_adds
             and isinstance(k, str)
             and k.startswith("add_")
-            and "module_actions" not in k
-            and "export_vars" not in k
+            and k not in protected_adds
             and isinstance(v, (list, dict))
         ):
             add_entries_from_chapter(dct, "".join(k.split("add_")), v)
@@ -790,7 +791,11 @@ def add_entries_from_chapter(config, add_chapter, add_entries):
                 config[add_chapter].append(entry)
         elif type(config[add_chapter]) == dict:
             # MA: I'm not supper happy about the resolve_nested_adds implementation
-            dict_merge(config[add_chapter], add_entries, resolve_nested_adds=True)
+            dict_merge(
+                config[add_chapter],
+                add_entries,
+                resolve_nested_adds=True,
+            )
     else:
         config[add_chapter] = add_entries
 
