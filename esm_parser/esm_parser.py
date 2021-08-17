@@ -2643,18 +2643,30 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
             user_config["defaults"] = {}
 
         default_infos = {}
-        for i in os.listdir(DEFAULTS_DIR):
-            file_contents = yaml_file_to_dict(DEFAULTS_DIR + "/" + i)
+
+        # get the files in the defaults directory and exclude general.yaml 
+        yaml_files = os.listdir(DEFAULTS_DIR)
+        if 'general.yaml' in yaml_files:
+            yaml_files.remove('general.yaml')
+            
+        for yaml_file in yaml_files: 
+            file_contents = yaml_file_to_dict(DEFAULTS_DIR + "/" + yaml_file)
             default_infos.update(file_contents)
 
-
+        # construct the `defaults` section of the configuration
         user_config["defaults"].update(default_infos)
 
         computer_file = determine_computer_from_hostname()
         computer_config = yaml_file_to_dict(computer_file)
+        
+        if 'general.yaml' in os.listdir(DEFAULTS_DIR):
+            general_config = yaml_file_to_dict(f"{DEFAULTS_DIR}/general.yaml")
+        else:
+            general_config = {}
+        
         setup_config = {
             "computer": computer_config,
-            "general": {},
+            "general": general_config,
         }
         for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
             attach_to_config_and_remove(setup_config["computer"], attachment,
