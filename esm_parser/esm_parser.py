@@ -72,6 +72,7 @@ import subprocess
 import sys
 import warnings
 import numpy
+from numbers import Number
 
 # Always import externals before any non standard library imports
 
@@ -2294,7 +2295,9 @@ def perform_actions(tree, rhs, config):
               action, parameter = action.split("(")
           if "format" in action:
               if "d" in parameter or "f" in parameter:
-                  source = int(source)
+                  # if the string resembles a float (eg. 366.0), then first 
+                  # turn it into a float and then to an int to prevent crash
+                  source = int(float(source))
               if parameter:
                   solved_rhs = parameter % source
               else:
@@ -2347,29 +2350,32 @@ def could_be_bool(value):
     return False
 
 
-def could_be_int(value):
-    try:
-        int(value)
-        return contains_underscore(value)
-    except:
-        try:
-            intval = int(
-                float(value)
-            )  # that is actually necessary, because of int("48.0")
-            if intval - float(value) == 0.0:
-                return contains_underscore(value)
-            else:
-                return False
-        except:
-            return False
+def could_be_int(entry):
+    """checks if the string input is an integer"""
+    is_int = False
+    # if not isinstance(entry, Number):
+        # return False
+    pattern = "[+-]?[0-9][0-9]*"
+    entry_str = str(entry)
+    m = re.match(pattern, entry_str)
+    if m:
+        if m.group(0) == entry_str:
+            is_int = True
+    return is_int
 
 
-def could_be_float(value):
-    try:
-        float(value)
-        return contains_underscore(value)
-    except:
-        return False
+def could_be_float(entry):
+    """checks if the string input is an floating point number"""
+    is_float = False
+    # if not isinstance(entry, Number):
+        # return False
+    entry_str = str(entry)
+    pattern = "([+-]?[0-9]+)?\.([0-9]*)?([Ee][+-]?[0-9]+)?"
+    m = re.match(pattern, entry_str)
+    if m:
+        if m.group(0) == entry_str:
+            is_float = True
+    return is_float
 
 
 def could_be_complex(value):
