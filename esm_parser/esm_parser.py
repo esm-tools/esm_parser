@@ -613,7 +613,7 @@ def dict_merge(dct, merge_dct):
             # * and so on...
             #
             # An idea...but I have absolutely no clue how to cleanly implement that...
-            if k is not "debug_info":
+            if k != "debug_info":
                 dict_merge(dct[k], merge_dct[k])
             else:
                 if "debug_info" in dct:
@@ -1661,7 +1661,7 @@ def recursive_run_function(tree, right, level, func, *args, **kwargs):
     logging.debug("Type right: %s", type(right))
     logging.debug("Do func for: %s", do_func_for)
 
-    if level is "keys" and isinstance(right, dict):
+    if level == "keys" and isinstance(right, dict):
         keys = list(right)
         for key in keys:
             old_value = right[key]
@@ -2536,9 +2536,9 @@ def find_key(d_search, k_search, exc_strings = "", level = "", paths2finds = [],
             if isinstance(key, str) and isinstance(istr, str) and istr not in key:
                 strings_in_key &= False
             # key is an integer but is not equal to the searched integer
-            elif isinstance(key, int) and istr is not key:
+            elif isinstance(key, int) and istr != key:
                 strings_in_key &= False
-            elif isinstance(key, float) and istr is not key:
+            elif isinstance(key, float) and istr != key:
                 strings_in_key &= False
             # key is neither an integer or a string
             elif not isinstance(key, str) and not isinstance(key, int) and not isinstance(key, float):
