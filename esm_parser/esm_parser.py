@@ -617,8 +617,6 @@ def dict_merge(dct, merge_dct, resolve_nested_adds=False):
             #
             # An idea...but I have absolutely no clue how to cleanly implement that...
             if k != "debug_info":
-                dict_merge(dct[k], merge_dct[k])
-            if k != "debug_info":
                 dict_merge(dct[k], merge_dct[k], resolve_nested_adds)
             else:
                 if "debug_info" in dct:
