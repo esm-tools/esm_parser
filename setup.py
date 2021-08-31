@@ -12,6 +12,7 @@ with open('HISTORY.rst') as history_file:
 
 requirements = ["pyyaml>=5.1",
                 "coloredlogs",
+                "colorama",
                 "six",
                 "loguru",
                 "numpy",  # NOTE(PG): Numpy is needed for VILMA? Do we need a specific version?
