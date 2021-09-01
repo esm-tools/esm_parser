@@ -138,6 +138,8 @@ constant_blacklist = [r"PATH", r"LD_LIBRARY_PATH", r"NETCDFF_ROOT", r"I_MPI_ROOT
 
 constant_blacklist = [re.compile(entry) for entry in constant_blacklist]
 
+keep_as_str = ["branch", "version"]
+
 # Ensure FileNotFoundError exists:
 if six.PY2:  # pragma: no cover
     FileNotFoundError = IOError
@@ -2210,7 +2212,10 @@ def do_math_in_entry(tree, rhs, config):
             result = result[-1] # should be extended in the future - here: if list (= if diff between dates) than result in seconds
         result = str(result)
         entry = before_math + result + after_math
-    return convert(entry.strip())
+    # TODO MA: this is a provisional dirty fix for release. Get rid of this once a more
+    # general solution is worked out
+    # ORIGINAL LINE: return convert(entry.strip())
+    return convert(entry.strip(), tree)
 
 
 def mark_dates(tree, rhs, config):
@@ -2387,7 +2392,14 @@ def contains_underscore(value):
     return True
 
 
-def convert(value):
+# TODO MA: this is a provisional dirty fix for release. Get rid of this once a more
+# general solution is worked out
+# ORIGINAL LINE: def convert(value):
+def convert(value, tree=["NO_KEY"]):
+    if tree:
+        key = tree[-1]
+        if key in keep_as_str:
+            return value
     if could_be_bool(value):
         return to_boolean(value)
     elif could_be_int(value):
