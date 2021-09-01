@@ -138,7 +138,7 @@ constant_blacklist = [r"PATH", r"LD_LIBRARY_PATH", r"NETCDFF_ROOT", r"I_MPI_ROOT
 
 constant_blacklist = [re.compile(entry) for entry in constant_blacklist]
 
-keep_as_str = ["branch", "version"]
+keep_as_str = ["branch"]
 
 # Ensure FileNotFoundError exists:
 if six.PY2:  # pragma: no cover
