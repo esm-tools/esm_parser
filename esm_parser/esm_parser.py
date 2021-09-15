@@ -77,6 +77,7 @@ import numpy
 
 # Third-Party Imports
 import coloredlogs
+import colorama
 import yaml
 import six
 
@@ -139,6 +140,7 @@ constant_blacklist = [r"PATH", r"LD_LIBRARY_PATH", r"NETCDFF_ROOT", r"I_MPI_ROOT
 constant_blacklist = [re.compile(entry) for entry in constant_blacklist]
 
 keep_as_str = ["branch"]
+protected_adds = ["add_module_actions", "add_export_vars", "add_unset_vars"]
 
 # Ensure FileNotFoundError exists:
 if six.PY2:  # pragma: no cover
@@ -579,7 +581,7 @@ def new_deep_update(receiving_dict, dict_to_be_included, winner = "receiving", b
 
 
 
-def dict_merge(dct, merge_dct):
+def dict_merge(dct, merge_dct, resolve_nested_adds=False):
     """ Recursive dict merge. Inspired by :meth:``dict.update()``, instead of
     updating only top-level keys, dict_merge recurses down into dicts nested
     to an arbitrary depth, updating keys. The ``merge_dct`` is merged into
@@ -616,12 +618,27 @@ def dict_merge(dct, merge_dct):
             # An idea...but I have absolutely no clue how to cleanly implement that...
             if k != "debug_info":
                 dict_merge(dct[k], merge_dct[k])
+            if k != "debug_info":
+                dict_merge(dct[k], merge_dct[k], resolve_nested_adds)
             else:
                 if "debug_info" in dct:
                     if isinstance(dct["debug_info"]["loaded_from_file"], str):
                         dct["debug_info"]["loaded_from_file"] = [dct["debug_info"]["loaded_from_file"]]
                     else:
                         dct["debug_info"]["loaded_from_file"].append(merge_dct["debug_info"]["loaded_from_file"])
+        # MA: I'm not super happy about the resolve_nested_adds implementation. Nested
+        # adds should probably resolved in a different place, after the first level
+        # ones are resolved.
+        # If the key exists and starts by ``add_``, it is a nested ``add_`` and is
+        # solved as such
+        elif (
+            resolve_nested_adds
+            and isinstance(k, str)
+            and k.startswith("add_")
+            and k not in protected_adds
+            and isinstance(v, (list, dict))
+        ):
+            add_entries_from_chapter(dct, "".join(k.split("add_")), v)
         else:
             dct[k] = merge_dct[k]
 
@@ -634,26 +651,37 @@ def deep_update(chapter, entries, config, blackdict={}):
      else:
         if chapter not in blackdict:
             dict_merge(config, {chapter: entries})
-     
-        # deniz: bugfix: choose_ blocks with "*" keys don't get updated. Eg. 
+
+        # deniz: bugfix: choose_ blocks with "*" keys don't get updated. Eg.
         # mail1 and mail2 don't get updated since they are initialized as empty
         # strings and are already inside. Current bug fix only correct scalar
-        # types such as strings.  
+        # types such as strings.
         else:
             empty_values = ["", None]  # some possible empty values to override
 
             # strip all whitespace. Eg. "  " -> "", if it is only space
-            if (isinstance(blackdict[chapter], str) and 
+            if (isinstance(blackdict[chapter], str) and
                 blackdict[chapter].isspace()):
                 blackdict[chapter] = re.sub(r"\s+", "", blackdict[chapter])
 
             # The update_key (chapter) is already inside the blackdict however,
-            # its value (entries) it not empty. So, update them 
-            if (blackdict[chapter] in empty_values and entries not in 
+            # its value (entries) it not empty. So, update them
+            if (blackdict[chapter] in empty_values and entries not in
                 empty_values):
                 dict_merge(config, {chapter: entries})
-                
-                
+
+            # Trying to update a dictionary from the same file (in blackdict)
+            # an ``add_`` returns an error
+            if isinstance(blackdict[chapter], dict):
+                user_error(
+                    "Missing 'add_'", (
+                        f"Not possible to update the '{config['model']}.{chapter}' "
+                        + f"dictionary. Please, use 'add_{chapter}' inside the "
+                        + f"'choose_' block, instead of just '{chapter}'."
+                    )
+                )
+
+
 def dict_overwrite(sender, receiver, key_path=[], recursion_level=0, verbose=False):
     """Recursively search through the dictionary and replace the keys with the
     ``overwrite`` tag
@@ -711,7 +739,7 @@ def dict_overwrite(sender, receiver, key_path=[], recursion_level=0, verbose=Fal
                     before_str = re.sub(r'\n[ \t]*$', '', before_str)
                     print(before_str)
                     print("---")
-                    
+
                     print("::: value after:")
                     after_str = f"{space}{yaml.dump(receiver[key], indent=4)}"
                     after_str = after_str.replace('\n', f'\n{space}')
@@ -724,8 +752,8 @@ def dict_overwrite(sender, receiver, key_path=[], recursion_level=0, verbose=Fal
                 dict_overwrite(sender[key], receiver[key], key_path=key_path,
                     recursion_level=recursion_level+1, verbose=verbose)
 
-    return receiver                
-                
+    return receiver
+
 
 
 def find_remove_entries_in_config(mapping, model_name, models = []):
@@ -765,7 +793,12 @@ def add_entries_from_chapter(config, add_chapter, add_entries):
             for entry in my_entries:
                 config[add_chapter].append(entry)
         elif type(config[add_chapter]) == dict:
-            dict_merge(config[add_chapter], add_entries)
+            # MA: I'm not supper happy about the resolve_nested_adds implementation
+            dict_merge(
+                config[add_chapter],
+                add_entries,
+                resolve_nested_adds=True,
+            )
     else:
         config[add_chapter] = add_entries
 
@@ -2569,7 +2602,7 @@ def find_key(d_search, k_search, exc_strings = "", level = "", paths2finds = [],
     return paths2finds
 
 
-def user_note(note_heading, note_text):
+def user_note(note_heading, note_text, color=colorama.Fore.YELLOW):
     """
     Notify the user about something. In the future this should also write in the log.
 
@@ -2580,8 +2613,9 @@ def user_note(note_heading, note_text):
     text : str
         Text clarifying the note.
     """
-    print("\n" + note_heading + "\n" + "-" * len(note_heading) + "\n")
-    print(note_text)
+    colorama.init(autoreset=True)
+    print(f"\n{color}{note_heading}\n{'-' * len(note_heading)}")
+    print(f"{note_text}\n")
 
 
 def user_error(error_type, error_text, exit_code=1):
@@ -2598,7 +2632,7 @@ def user_error(error_type, error_text, exit_code=1):
         The exit code to send back to the parent process (default to 1)
     """
     error_title = "ERROR: " + error_type
-    user_note(error_title, error_text)
+    user_note(error_title, error_text, color=colorama.Fore.RED)
     sys.exit(exit_code)
 
 
