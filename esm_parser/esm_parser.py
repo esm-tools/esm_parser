@@ -141,6 +141,7 @@ constant_blacklist = [re.compile(entry) for entry in constant_blacklist]
 
 protected_adds = ["add_module_actions", "add_export_vars", "add_unset_vars"]
 keep_as_str = ["branch"]
+early_choose_vars = ["include_models", "version"]
 
 # Ensure FileNotFoundError exists:
 if six.PY2:  # pragma: no cover
@@ -1495,7 +1496,9 @@ def resolve_choose_with_var(
     choose_with_var = find_key(
         config, var, exc_strings="add_", paths2finds=[], sep=sep
     )
-    choose_with_var = [x for x in choose_with_var if "choose_" in x]
+    choose_with_var = [
+        x for x in choose_with_var if "choose_" in x and f"choose_{var}" not in x
+    ]
     # Find the path to the variable ``add_var`` in the given ``config``, inside a
     # ``choose_``
     choose_with_add_var = find_key(
@@ -1523,23 +1526,40 @@ def resolve_choose_with_var(
             choose_with_var = choose_with_var[0].split(sep)[0]
             # Get the key for the ``choose_``
             choose_key = choose_with_var.replace("choose_", "")
-            # Name of the evaluated model
-            if not current_model:
-                current_model = config.get("model")
+            # Deep copy here avoids the other variables in the case to be updated
+            # now. We want to update now ONLY the ``lvar``.
+            config_copy = copy.deepcopy(config)
+            # If the key includes the absolute path
+            if "." in choose_key:
+                # Get the component to search for the key
+                component_with_key = choose_key.split(".")[0]
+                # Remove the chapter from the key
+                choose_key = choose_key.split(".")[1]
+            else:
+                # Name of the evaluated model
+                if not current_model:
+                    current_model = config.get("model")
+                # Get the component to search for the key
+                component_with_key = current_model
+                # Rename the whole choose_ block in the copied configuration to include
+                # the chapter
+                choose_with_var_new = choose_with_var.replace(
+                    "choose_", f"choose_{component_with_key}."
+                )
+                config_copy[choose_with_var_new] = config_copy[choose_with_var]
+                del config_copy[choose_with_var]
+                choose_with_var = choose_with_var_new
             # Find where the case for the ``choose_`` is defined, with priority: user ->
             # setup -> model
             config_to_search_into = None
-            if choose_key in user_config.get(current_model, []):
-                config_to_search_into = user_config.get(current_model)
-            elif choose_key in setup_config.get(current_model, []):
-                config_to_search_into = setup_config.get(current_model)
-            elif choose_key in model_config.get(current_model, []):
-                config_to_search_into = model_config.get(current_model)
+            if choose_key in user_config.get(component_with_key, []):
+                config_to_search_into = user_config
+            elif choose_key in setup_config.get(component_with_key, []):
+                config_to_search_into = setup_config
+            elif choose_key in model_config.get(component_with_key, []):
+                config_to_search_into = model_config
             # If the case was found
             if config_to_search_into:
-                # Deep copy here avoids the other variables in the case to be updated
-                # now. We want to update now ONLY the ``lvar``.
-                config_copy = copy.deepcopy(config)
                 # Resolve the case
                 resolve_basic_choose(config_to_search_into, config_copy, choose_with_var)
                 # If ``var`` was defined through the resolution of the ``choose_``, add
@@ -2824,19 +2844,25 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
 
 
         if "models" in setup_config["general"]:
+            # Solve the variables within choose_ blocks that need to be solved early
+            # (i.e. include_models, versions...)
             for model in setup_config["general"]["models"]:
-                if model in model_config:
-                    # Resolve choose with include_models (Miguel)
-                    resolve_choose_with_var(
-                        "include_models",
-                        model_config.get(model),
-                        user_config=user_config,
-                        model_config=model_config,
-                        setup_config=setup_config,
-                    )
-                    attach_to_config_and_reduce_keyword(
-                        model_config[model], model_config, "include_models", "models"
-                    )
+                # Solve the variable for each configuration type
+                for this_config in [user_config, setup_config, model_config]:
+                    if model in this_config:
+                        # Resolve the target variable
+                        for var in early_choose_vars:
+                            resolve_choose_with_var(
+                                var,
+                                this_config.get(model),
+                                user_config=user_config,
+                                model_config=model_config,
+                                setup_config=setup_config,
+                            )
+                        # Special treatment for "include_models"
+                        attach_to_config_and_reduce_keyword(
+                            this_config[model], model_config, "include_models", "models"
+                        )
             for model in list(model_config):
                 for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
                     attach_to_config_and_remove(model_config[model], attachment,
