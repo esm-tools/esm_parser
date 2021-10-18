@@ -434,7 +434,7 @@ def attach_to_config_and_reduce_keyword(
         del config_to_read_from[full_keyword]
 
 
-def attach_single_config(config, path, attach_value, all_config=None):
+def attach_single_config(config, path, attach_value, all_config=None, **kwargs):
     """
     Parameters
     ----------
@@ -459,11 +459,11 @@ def attach_single_config(config, path, attach_value, all_config=None):
         print ("Could not find ", path + "/" + attach_value)
         sys.exit(1)
     #DB this is a try:
-    dict_merge(config, attachable_config)
+    dict_merge(config, attachable_config, **kwargs)
     #config.update(attachable_config)
 
 
-def attach_to_config_and_remove(config, attach_key, all_config=None):
+def attach_to_config_and_remove(config, attach_key, all_config=None, **kwargs):
     """
     Attaches extra dict to this one and removes the chapter
 
@@ -492,7 +492,7 @@ def attach_to_config_and_remove(config, attach_key, all_config=None):
                 attach_path, attach_value = attach_value.rsplit("/", 1)
             except ValueError:
                 attach_path = "."
-            attach_single_config(config, attach_path, attach_value, all_config=all_config)
+            attach_single_config(config, attach_path, attach_value, all_config=all_config, **kwargs)
 
 
 priority_marker = ">>THIS_ONE<<"
@@ -582,7 +582,7 @@ def new_deep_update(receiving_dict, dict_to_be_included, winner = "receiving", b
 
 
 
-def dict_merge(dct, merge_dct, resolve_nested_adds=False):
+def dict_merge(dct, merge_dct, resolve_nested_adds=False, **kwargs):
     """ Recursive dict merge. Inspired by :meth:``dict.update()``, instead of
     updating only top-level keys, dict_merge recurses down into dicts nested
     to an arbitrary depth, updating keys. The ``merge_dct`` is merged into
@@ -591,6 +591,11 @@ def dict_merge(dct, merge_dct, resolve_nested_adds=False):
     :param merge_dct: dct merged into dct
     :return: None
     """
+    # option to overwrite a dict value if merge_dict contains empty value. Default
+    # is False
+    dont_overwrite_with_empty_value = kwargs.get("dont_overwrite_with_empty_value", 
+        False)
+
     for k, v in six.iteritems(merge_dct):
         if (
             k in dct
@@ -639,6 +644,12 @@ def dict_merge(dct, merge_dct, resolve_nested_adds=False):
         ):
             add_entries_from_chapter(dct, "".join(k.split("add_")), v)
         else:
+            # keep the value of dct[k] if dct[k] is already set but merge_dct[k]
+            # is empty and protection is requested
+            if k in dct:
+                if dct[k] and not merge_dct[k] and dont_overwrite_with_empty_value:
+                    merge_dct[k] = dct[k]
+
             dct[k] = merge_dct[k]
 
 
@@ -2745,7 +2756,7 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
         }
         for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
             attach_to_config_and_remove(setup_config["computer"], attachment,
-                all_config = None)
+                all_config = None, dont_overwrite_with_empty_value=True)
         # Add the fake "model" name to the computer:
         setup_config["computer"]["model"] = "computer"
         logger.info("setup config is being updated with setup_relevant_configs")
