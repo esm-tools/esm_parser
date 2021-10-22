@@ -324,6 +324,7 @@ def attach_to_config_and_reduce_keyword(
     full_keyword,
     reduced_keyword="included_files",
     level_to_write_to=None,
+    **kwargs
 ):
     """
     Attaches a new dictionary to the config, and registers it as the value of
@@ -373,6 +374,9 @@ def attach_to_config_and_reduce_keyword(
     -------
     Both ``config_to_read_from`` and ``config_to_write_to`` are modified **in place**!
     """
+    # check if tag is present
+    model_version_tag = kwargs.get("model_version_tag", None)
+
     if full_keyword in config_to_read_from:
 
         if level_to_write_to:
@@ -395,8 +399,21 @@ def attach_to_config_and_reduce_keyword(
         if isinstance(config_to_read_from[full_keyword], list):
             for item in config_to_read_from[full_keyword]:
                 model = item
-                if "-" in item:
-                    model, rest = (item.split("-")[0], "-".join(item.split("-")[1:]))
+                if model_version_tag and model_version_tag in item:
+                    model, rest = item.split(model_version_tag)
+                    # remove the tag since `item` will go into `look_for_file`
+                    # Eg. fesom<<<MODEL_VERSION>>>1.4 -> fesom1.4
+                    item = item.replace(model_version_tag, "")
+                # deniz: commented-out here. I think it is very very dangerous
+                # to separate information with hyphens. Rather, tags like
+                # <<<...>>> should be used.
+                # elif "-" in item:
+                    # model, rest = (item.split("-")[0], "-".join(item.split("-")[1:]))
+
+                # ===
+                # NOTE: we need to be more clear about what these lines are
+                # doing. Eg. what is the expected format of the incoming string
+                # ===
                 else:
                     if "." in item:
                         model, model_part = (item.split(".")[0], ".".join(item.split(".")[1:]))
@@ -2766,6 +2783,11 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
         # setup_config should be ok now
         # model_config:
 
+        # NOTE: using hyphen to separate model information could be buggy. See:
+        # https://github.com/esm-tools/esm_tools/issues/483
+        # Rather we should use tags like <<<...>>>
+        # Tag for easy extraction of information
+        model_version_tag = "<<<MODEL_VERSION>>>" 
         old_model_list = None
         if "include_models" in setup_config["general"]:
             new_model_list = []
@@ -2773,17 +2795,26 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
             if "models" in setup_config["general"]:
                 old_model_list += setup_config["general"]["models"].copy()
             for model in setup_config["general"]["include_models"]:
+                # NOTE: fragile code: relying on hyphens is not good. Switch to
+                # tags in the futre
                 if not "-" in model and model in user_config and "version" in user_config[model]:
-                    new_model_list.append(model + "-" + user_config[model]["version"])
+                    # new_model_list.append(model + "-" + user_config[model]["version"])
+                    # eg. fesom<<<MODEL_VERSION>>>1.4
+                    # NOTE: if no version is found esm_master defaults that to 
+                    # "" or "default" (old behavior)
+                    new_model_list.append(model + model_version_tag + user_config[model]["version"])
                 elif not "-" in model and model in setup_config and "version" in setup_config[model]:
-                    new_model_list.append(model + "-" + setup_config[model]["version"])
+                    # new_model_list.append(model + "-" + setup_config[model]["version"])
+                    new_model_list.append(model + model_version_tag + setup_config[model]["version"])
                 else:
+                    # eg. fesom
                     new_model_list.append(model)
             setup_config["general"]["include_models"] = new_model_list
 
         model_config = {}
         attach_to_config_and_reduce_keyword(
-            setup_config["general"], model_config, "include_models", "models"
+            setup_config["general"], model_config, "include_models", "models",
+            model_version_tag=model_version_tag
         )
 
         if old_model_list:
@@ -2803,7 +2834,8 @@ class ConfigSetup(GeneralConfig):  # pragma: no cover
                         setup_config=setup_config,
                     )
                     attach_to_config_and_reduce_keyword(
-                        model_config[model], model_config, "include_models", "models"
+                        model_config[model], model_config, "include_models", 
+                        "models", model_version_tag=model_version_tag
                     )
             for model in list(model_config):
                 for attachment in CONFIGS_TO_ALWAYS_ATTACH_AND_REMOVE:
