@@ -2654,6 +2654,8 @@ def user_note(note_heading, note_text, color=colorama.Fore.YELLOW):
         Text clarifying the note.
     """
     colorama.init(autoreset=True)
+    reset_s = colorama.Style.RESET_ALL
+    note_text = re.sub("``([^`]*)``|\"([^\"]*)\"", f"{color}\\1{reset_s}", note_text)
     print(f"\n{color}{note_heading}\n{'-' * len(note_heading)}")
     print(f"{note_text}\n")
 

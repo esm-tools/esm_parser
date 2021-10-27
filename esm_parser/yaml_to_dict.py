@@ -192,6 +192,8 @@ def yaml_file_to_dict(filepath):
                     yaml_load['computer'] = yaml_load.get("computer") or {}
                     yaml_load['computer']['runtime_environment_changes'] = yaml_load['computer'].get('runtime_environment_changes') or {}
                     yaml_load['computer']['runtime_environment_changes']['add_export_vars'] = add_export_vars
+                # Check for empty components/models
+                check_for_empty_components(yaml_load, filepath + extension)
                 return yaml_load
         except IOError as error:
             logger.debug(
@@ -400,6 +402,16 @@ def check_changes_duplicates(yamldict_all, fpath):
                         + add_note
                         + "\n\n",
                     )
+
+
+def check_for_empty_components(yaml_load, fpath):
+    for key, value in yaml_load.items():
+        if not value:
+            esm_parser.user_error("YAML syntax",
+                f"The component ``{key}`` is empty in the file ``{fpath}``. ESM-Tools does"
+                + " not support empty components, either add some variables to the "
+                + f"``{key}`` section, or remove it from this file."
+            )
 
 
 def find_last_choose(var_path):
