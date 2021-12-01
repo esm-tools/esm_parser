@@ -2580,6 +2580,43 @@ def find_key(d_search, k_search, exc_strings = "", level = "", paths2finds = [],
     return paths2finds
 
 
+def get_value_in_nested_dict(container, search_key):
+    """Checks for the ``search_key`` inside the (nested) dictionary ``container``
+    and returns the generator object of values of that key.
+    
+    Parameters
+    ----------
+    container : dict
+        dictionary to search for
+    search_key : any "hashable" Python object, eg. str, int
+    
+    Yields
+    ------
+    result : generator object 
+        value(s) of the key ``search_key`` in the dictionary
+    """
+    
+    # case 1: the container to search in is a dictionary
+    if isinstance(container, dict):
+        # what we are looking for is already a key in the dictionary, yield 
+        # it's value
+        if search_key in container:
+            yield container[search_key]
+        
+        # or it might be inside its values. For each value search recursively
+        for value in container.values():
+            for result in get_value_in_nested_dict(value, search_key):
+                yield result
+                
+    # case 2: the node of the nested dictionary is a list. Recursively search
+    # its items
+    elif isinstance(container, list):
+        for item in container:
+            for result in get_value_in_nested_dict(item, search_key):
+                yield result
+
+
+
 def user_note(note_heading, note_text):
     """
     Notify the user about something. In the future this should also write in the log.
